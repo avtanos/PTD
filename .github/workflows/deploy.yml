@@ -27,16 +27,19 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install dependencies
-        run: |
-          cd frontend
-          npm install --legacy-peer-deps
-
-      - name: Build
+      - name: Install and Build
         env:
           REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL || 'https://api.example.com/api/v1' }}
         run: |
           cd frontend
+          echo "Current directory: $(pwd)"
+          echo "Checking package.json..."
+          ls -la package.json
+          echo "Installing dependencies..."
+          npm install --legacy-peer-deps
+          echo "Checking scripts..."
+          npm run
+          echo "Building..."
           npm run build
 
       - name: Setup Pages
