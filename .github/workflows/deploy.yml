@@ -43,6 +43,7 @@ jobs:
           REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL || 'https://api.example.com/api/v1' }}
           CI: false
           DISABLE_ESLINT_PLUGIN: true
+          PUBLIC_URL: /PTD
         run: |
           if [ -d "frontend" ]; then
             cd frontend
