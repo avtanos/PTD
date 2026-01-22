@@ -29,13 +29,20 @@ jobs:
 
       - name: Install dependencies
         working-directory: ./frontend
-        run: npm install --legacy-peer-deps
+        run: |
+          pwd
+          ls -la
+          npm install --legacy-peer-deps
 
       - name: Build
         working-directory: ./frontend
         env:
           REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL || 'https://api.example.com/api/v1' }}
-        run: npm run build
+        run: |
+          pwd
+          ls -la package.json
+          cat package.json | grep -A 5 scripts
+          npm run build
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
