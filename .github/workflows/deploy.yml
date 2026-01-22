@@ -27,14 +27,36 @@ jobs:
         with:
           node-version: '18'
 
+      - name: Check repository structure
+        run: |
+          echo "Root directory contents:"
+          ls -la
+          echo "Looking for frontend:"
+          find . -name "package.json" -type f | head -10
+          echo "Checking if frontend exists:"
+          ls -la frontend/ 2>&1 || echo "frontend/ not found"
+          echo "Checking if backend/frontend exists:"
+          ls -la backend/frontend/ 2>&1 || echo "backend/frontend/ not found"
+
       - name: Install and Build
         env:
           REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL || 'https://api.example.com/api/v1' }}
         run: |
-          cd frontend
+          if [ -d "frontend" ]; then
+            cd frontend
+          elif [ -d "backend/frontend" ]; then
+            cd backend/frontend
+          else
+            echo "Frontend directory not found!"
+            exit 1
+          fi
           echo "Current directory: $(pwd)"
           echo "Checking package.json..."
-          ls -la package.json
+          if [ ! -f "package.json" ]; then
+            echo "package.json not found in $(pwd)"
+            ls -la
+            exit 1
+          fi
           echo "Installing dependencies..."
           npm install --legacy-peer-deps
           echo "Checking scripts..."
