@@ -28,20 +28,15 @@ jobs:
           node-version: '18'
 
       - name: Install dependencies
-        working-directory: ./frontend
         run: |
-          pwd
-          ls -la
+          cd frontend
           npm install --legacy-peer-deps
 
       - name: Build
-        working-directory: ./frontend
         env:
           REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL || 'https://api.example.com/api/v1' }}
         run: |
-          pwd
-          ls -la package.json
-          cat package.json | grep -A 5 scripts
+          cd frontend
           npm run build
 
       - name: Setup Pages
