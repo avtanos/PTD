@@ -8,13 +8,16 @@ import App from './App';
 const savedTheme = localStorage.getItem('theme') || 'dark';
 document.documentElement.setAttribute('data-theme', savedTheme);
 
+// Используем HashRouter для GitHub Pages (поддержка SPA роутинга)
+const Router = window.location.hostname.includes('github.io') ? HashRouter : BrowserRouter;
+
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
 root.render(
   <React.StrictMode>
-    <BrowserRouter>
+    <Router>
       <App />
-    </BrowserRouter>
+    </Router>
   </React.StrictMode>
 );

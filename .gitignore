@@ -41,7 +41,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # React
-frontend/build/
+# frontend/build/ - раскомментируйте для исключения build из git, но это нужно для GitHub Pages
 frontend/.pnp
 frontend/.pnp.js
 
