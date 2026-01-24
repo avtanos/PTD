@@ -1,0 +1,20 @@
+# Для SQLite docker-compose не требуется
+# Этот файл оставлен для совместимости, если в будущем понадобится PostgreSQL
+
+# version: '3.8'
+#
+# services:
+#   postgres:
+#     image: postgres:14-alpine
+#     container_name: pto_postgres
+#     environment:
+#       POSTGRES_USER: pto_user
+#       POSTGRES_PASSWORD: pto_password
+#       POSTGRES_DB: pto_db
+#     ports:
+#       - "5432:5432"
+#     volumes:
+#       - postgres_data:/var/lib/postgresql/data
+#
+# volumes:
+#   postgres_data:

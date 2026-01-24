@@ -31,7 +31,7 @@ class ExecutiveDocument(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
-    doc_type = Column(Enum(DocumentType, native_enum=False), nullable=False, comment="Тип документа")
+    doc_type = Column(String(50), nullable=False, comment="Тип документа")
     name = Column(String(500), nullable=False, comment="Наименование документа")
     number = Column(String(100), comment="Номер документа")
     date = Column(Date, comment="Дата документа")

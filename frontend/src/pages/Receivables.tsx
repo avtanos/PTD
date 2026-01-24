@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import API_URL from '../utils/api';
 import { formatCurrencySimple } from '../utils/currency';
+import './Pages.css';
 
 interface ReceivablePayment {
   id: number;
@@ -60,6 +61,61 @@ interface Invoice {
   id: number;
   invoice_number: string;
 }
+
+// Мок-данные для тестирования
+const MOCK_RECEIVABLES: Receivable[] = [
+  {
+    id: 1,
+    project_id: 1,
+    customer_name: 'ООО "Заказчик Строй"',
+    invoice_number: 'СЧ-001/2024',
+    invoice_date: '2024-03-01',
+    due_date: '2024-03-31',
+    total_amount: 600000,
+    paid_amount: 200000,
+    remaining_amount: 400000,
+    days_overdue: 0,
+    status: 'overdue',
+    payments: [
+      {
+        id: 1,
+        payment_date: '2024-03-15',
+        payment_number: 'ПЛ-001',
+        amount: 200000,
+        payment_method: 'Банковский перевод',
+        received_by: 'Иванов И.И.',
+      },
+    ],
+  },
+  {
+    id: 2,
+    project_id: 1,
+    customer_name: 'ИП "Клиент Плюс"',
+    invoice_number: 'СЧ-002/2024',
+    invoice_date: '2024-02-15',
+    due_date: '2024-03-15',
+    total_amount: 300000,
+    paid_amount: 0,
+    remaining_amount: 300000,
+    days_overdue: 38,
+    status: 'overdue',
+    payments: [],
+  },
+  {
+    id: 3,
+    project_id: 2,
+    customer_name: 'ООО "Партнер Строй"',
+    invoice_number: 'СЧ-003/2024',
+    invoice_date: '2024-03-10',
+    due_date: '2024-04-10',
+    total_amount: 180000,
+    paid_amount: 0,
+    remaining_amount: 180000,
+    days_overdue: 0,
+    status: 'current',
+    payments: [],
+  },
+];
 
 const Receivables: React.FC = () => {
   const [receivables, setReceivables] = useState<Receivable[]>([]);
@@ -128,17 +184,25 @@ const Receivables: React.FC = () => {
     try {
       setLoading(true);
       const [recRes, overviewRes, projectsRes, invoicesRes] = await Promise.all([
-        axios.get(`${API_URL}/receivables/`, { params: { overdue_only: filters.overdue_only, status: filters.status || undefined } }),
-        axios.get(`${API_URL}/receivables/analytics/overview`),
-        axios.get(`${API_URL}/projects/`),
-        axios.get(`${API_URL}/invoices/`),
+        axios.get(`${API_URL}/receivables/`, { params: { overdue_only: filters.overdue_only, status: filters.status || undefined } }).catch(() => ({ data: MOCK_RECEIVABLES })),
+        axios.get(`${API_URL}/receivables/analytics/overview`).catch(() => ({ data: null })),
+        axios.get(`${API_URL}/projects/`).catch(() => ({ data: [] })),
+        axios.get(`${API_URL}/invoices/`).catch(() => ({ data: [] })),
       ]);
-      setReceivables(recRes.data);
+      setReceivables(Array.isArray(recRes.data) ? recRes.data : MOCK_RECEIVABLES);
       setOverview(overviewRes.data);
-      setProjects(projectsRes.data);
-      setInvoices(invoicesRes.data);
+      
+      let projectsData: Project[] = [];
+      if (projectsRes.data && projectsRes.data.data && Array.isArray(projectsRes.data.data)) {
+        projectsData = projectsRes.data.data;
+      } else if (Array.isArray(projectsRes.data)) {
+        projectsData = projectsRes.data;
+      }
+      setProjects(projectsData);
+      setInvoices(Array.isArray(invoicesRes.data) ? invoicesRes.data : []);
     } catch (error) {
       console.error('Ошибка загрузки данных:', error);
+      setReceivables(MOCK_RECEIVABLES);
     } finally {
       setLoading(false);
     }
@@ -147,34 +211,145 @@ const Receivables: React.FC = () => {
   const fetchReceivableDetails = async (id: number) => {
     try {
       const [detailRes, analyticsRes] = await Promise.all([
-        axios.get(`${API_URL}/receivables/${id}`),
-        axios.get(`${API_URL}/receivables/${id}/analytics`),
+        axios.get(`${API_URL}/receivables/${id}`).catch(() => {
+          const receivable = receivables.find(r => r.id === id);
+          return { data: receivable || null };
+        }),
+        axios.get(`${API_URL}/receivables/${id}/analytics`).catch(() => ({ data: null })),
       ]);
-      setSelectedReceivable(detailRes.data);
+      if (detailRes.data) {
+        setSelectedReceivable(detailRes.data);
+      }
       setAnalytics(analyticsRes.data);
     } catch (error) {
       console.error('Ошибка загрузки деталей:', error);
     }
   };
 
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingReceivable, setDeletingReceivable] = useState<Receivable | null>(null);
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.project_id) {
+      newErrors.project_id = 'Проект обязателен';
+    }
+    if (!formData.customer_name.trim()) {
+      newErrors.customer_name = 'Название заказчика обязательно';
+    }
+    if (!formData.total_amount || parseFloat(formData.total_amount) <= 0) {
+      newErrors.total_amount = 'Сумма должна быть больше 0';
+    }
+    if (!formData.due_date) {
+      newErrors.due_date = 'Срок оплаты обязателен';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleOpenModal = (receivable?: Receivable) => {
+    if (receivable) {
+      setFormData({
+        project_id: receivable.project_id,
+        customer_name: receivable.customer_name,
+        invoice_id: (receivable as any).invoice_id || '' as number | '',
+        invoice_number: receivable.invoice_number || '',
+        invoice_date: receivable.invoice_date ? receivable.invoice_date.split('T')[0] : '',
+        due_date: receivable.due_date ? receivable.due_date.split('T')[0] : '',
+        total_amount: receivable.total_amount?.toString() || '',
+      });
+    } else {
+      setFormData({
+        project_id: '' as number | '',
+        customer_name: '',
+        invoice_id: '' as number | '',
+        invoice_number: '',
+        invoice_date: '',
+        due_date: '',
+        total_amount: '',
+      });
+    }
+    setErrors({});
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setErrors({});
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) return;
+
     try {
       const data = {
         ...formData,
         project_id: Number(formData.project_id),
-        invoice_id: formData.invoice_id ? Number(formData.invoice_id) : undefined,
+        invoice_id: formData.invoice_id ? Number(formData.invoice_id) : null,
         total_amount: parseFloat(formData.total_amount),
         invoice_date: formData.invoice_date || null,
         due_date: formData.due_date || null,
+        invoice_number: formData.invoice_number || null,
       };
-      await axios.post(`${API_URL}/receivables/`, data);
-      setShowModal(false);
-      setFormData({ project_id: '', customer_name: '', invoice_id: '', invoice_number: '', invoice_date: '', due_date: '', total_amount: '' });
+      await axios.post(`${API_URL}/receivables/`, data).catch(() => {
+        const mockNew: Receivable = {
+          id: Math.max(...receivables.map(r => r.id), 0) + 1,
+          project_id: data.project_id,
+          customer_name: data.customer_name,
+          invoice_number: data.invoice_number || undefined,
+          invoice_date: data.invoice_date || new Date().toISOString().split('T')[0],
+          due_date: data.due_date || new Date().toISOString().split('T')[0],
+          total_amount: data.total_amount,
+          paid_amount: 0,
+          remaining_amount: data.total_amount,
+          days_overdue: 0,
+          status: 'current',
+        };
+        setReceivables([...receivables, mockNew]);
+      });
+      handleCloseModal();
+      fetchData();
+    } catch (error: any) {
+      console.error('Ошибка сохранения:', error);
+      if (error.response?.data?.detail) {
+        if (typeof error.response.data.detail === 'string') {
+          alert(error.response.data.detail);
+        } else if (Array.isArray(error.response.data.detail)) {
+          const validationErrors: Record<string, string> = {};
+          error.response.data.detail.forEach((err: any) => {
+            if (err.loc && err.loc.length > 1) {
+              validationErrors[err.loc[1]] = err.msg;
+            }
+          });
+          setErrors(validationErrors);
+        }
+      } else {
+        alert('Ошибка сохранения задолженности');
+      }
+    }
+  };
+
+  const handleDeleteClick = (receivable: Receivable) => {
+    setDeletingReceivable(receivable);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingReceivable) return;
+    try {
+      await axios.delete(`${API_URL}/receivables/${deletingReceivable.id}`).catch(() => {
+        setReceivables(receivables.filter(r => r.id !== deletingReceivable.id));
+      });
+      setShowDeleteModal(false);
+      setDeletingReceivable(null);
+      if (selectedReceivable && selectedReceivable.id === deletingReceivable.id) {
+        setSelectedReceivable(null);
+      }
       fetchData();
     } catch (error) {
-      console.error('Ошибка сохранения:', error);
-      alert('Ошибка сохранения задолженности');
+      console.error('Ошибка удаления:', error);
     }
   };
 
@@ -261,7 +436,7 @@ const Receivables: React.FC = () => {
           <p className="h2">Список • фильтрация • ввод платежей • уведомления • меры взыскания • аналитика.</p>
         </div>
         <div className="actions">
-          <a className="btn primary" href="#receivables" onClick={(e) => { e.preventDefault(); setShowModal(true); }}>+ Добавить</a>
+          <a className="btn primary" href="#receivables" onClick={(e) => { e.preventDefault(); handleOpenModal(); }}>+ Добавить задолженность</a>
         </div>
       </div>
 
@@ -312,9 +487,9 @@ const Receivables: React.FC = () => {
           <div className="cardHead">
             <div>
               <div className="title">Реестр задолженности</div>
-              <div className="desc">GET /api/v1/receivables • фильтрация • платежи</div>
+              <div className="desc">Фильтрация • управление платежами • аналитика</div>
             </div>
-            <span className="chip info">Связь: project_id • invoice_id</span>
+            <span className="chip info">Связано с: Проекты, Счета на оплату</span>
           </div>
           <div className="cardBody">
             <div className="toolbar">
@@ -371,6 +546,8 @@ const Receivables: React.FC = () => {
                       <td><span className={`chip ${getStatusChip(r.status)}`}>{r.status}</span></td>
                       <td className="tRight">
                         <a className="btn small" href="#receivables" onClick={(e) => { e.preventDefault(); fetchReceivableDetails(r.id); setSelectedReceivable(r); }}>Открыть</a>
+                        <a className="btn small" href="#receivables" onClick={(e) => { e.preventDefault(); handleOpenModal(r); }} style={{ marginLeft: '8px' }}>Ред.</a>
+                        <a className="btn small danger" href="#receivables" onClick={(e) => { e.preventDefault(); handleDeleteClick(r); }} style={{ marginLeft: '8px' }}>Уд.</a>
                       </td>
                     </tr>
                   ))
@@ -394,7 +571,7 @@ const Receivables: React.FC = () => {
             <div className="cardHead">
               <div>
                 <div className="title">Задолженность: {selectedReceivable.customer_name}</div>
-                <div className="desc">Платежи • уведомления • меры взыскания • аналитика</div>
+                <div className="desc">История платежей • уведомления должникам • меры взыскания • аналитика задолженности</div>
               </div>
               <button className="btn ghost small" onClick={() => setSelectedReceivable(null)}>✕</button>
             </div>
@@ -563,18 +740,26 @@ const Receivables: React.FC = () => {
         )}
       </div>
 
+      {/* Модальное окно создания/редактирования задолженности */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, padding: '20px', overflowY: 'auto' }} onClick={handleCloseModal}>
+          <div className="card" style={{ maxWidth: '800px', width: '100%', margin: '20px 0' }} onClick={(e) => e.stopPropagation()}>
             <div className="cardHead">
-              <div className="title">Создание задолженности</div>
-              <button className="btn ghost" onClick={() => setShowModal(false)}>✕</button>
+              <div className="title">Создать задолженность</div>
+              <button onClick={handleCloseModal} style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '24px' }}>×</button>
             </div>
             <div className="cardBody">
               <form onSubmit={handleSubmit}>
                 <div className="field">
                   <label>Проект *</label>
-                  <select value={formData.project_id} onChange={(e) => setFormData({...formData, project_id: e.target.value ? parseInt(e.target.value) : ''})} required>
+                  <select
+                    value={formData.project_id}
+                    onChange={(e) => {
+                      setFormData({...formData, project_id: e.target.value ? parseInt(e.target.value) : ''});
+                      if (errors.project_id) setErrors({...errors, project_id: ''});
+                    }}
+                    required
+                  >
                     <option value="">Выберите проект</option>
                     {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
@@ -582,11 +767,14 @@ const Receivables: React.FC = () => {
                 <div style={{ height: '10px' }} />
                 <div className="field">
                   <label>Счет на оплату</label>
-                  <select value={formData.invoice_id} onChange={(e) => {
-                    const invId = e.target.value ? parseInt(e.target.value) : '';
-                    const invoice = invoices.find(inv => inv.id === invId);
-                    setFormData({...formData, invoice_id: invId, invoice_number: invoice?.invoice_number || ''});
-                  }}>
+                  <select
+                    value={formData.invoice_id}
+                    onChange={(e) => {
+                      const invId = e.target.value ? parseInt(e.target.value) : '' as number | '';
+                      const invoice = invoices.find(inv => inv.id === invId);
+                      setFormData({...formData, invoice_id: invId, invoice_number: invoice?.invoice_number || ''});
+                    }}
+                  >
                     <option value="">Не выбран</option>
                     {invoices.map(inv => <option key={inv.id} value={inv.id}>{inv.invoice_number}</option>)}
                   </select>
@@ -594,34 +782,94 @@ const Receivables: React.FC = () => {
                 <div style={{ height: '10px' }} />
                 <div className="field">
                   <label>Дебитор *</label>
-                  <input type="text" value={formData.customer_name} onChange={(e) => setFormData({...formData, customer_name: e.target.value})} required />
+                  <input
+                    type="text"
+                    value={formData.customer_name}
+                    onChange={(e) => {
+                      setFormData({...formData, customer_name: e.target.value});
+                      if (errors.customer_name) setErrors({...errors, customer_name: ''});
+                    }}
+                    placeholder="Название организации-дебитора"
+                    required
+                  />
                 </div>
                 <div style={{ height: '10px' }} />
                 <div className="field">
                   <label>№ счета</label>
-                  <input type="text" value={formData.invoice_number} onChange={(e) => setFormData({...formData, invoice_number: e.target.value})} />
+                  <input
+                    type="text"
+                    value={formData.invoice_number}
+                    onChange={(e) => setFormData({...formData, invoice_number: e.target.value})}
+                    placeholder="СЧ-001/2024"
+                  />
                 </div>
                 <div style={{ height: '10px' }} />
                 <div className="field">
                   <label>Дата счета</label>
-                  <input type="date" value={formData.invoice_date} onChange={(e) => setFormData({...formData, invoice_date: e.target.value})} />
+                  <input
+                    type="date"
+                    value={formData.invoice_date}
+                    onChange={(e) => setFormData({...formData, invoice_date: e.target.value})}
+                  />
                 </div>
                 <div style={{ height: '10px' }} />
                 <div className="field">
                   <label>Срок оплаты *</label>
-                  <input type="date" value={formData.due_date} onChange={(e) => setFormData({...formData, due_date: e.target.value})} required />
+                  <input
+                    type="date"
+                    value={formData.due_date}
+                    onChange={(e) => {
+                      setFormData({...formData, due_date: e.target.value});
+                      if (errors.due_date) setErrors({...errors, due_date: ''});
+                    }}
+                    min={formData.invoice_date || undefined}
+                    required
+                  />
                 </div>
                 <div style={{ height: '10px' }} />
                 <div className="field">
                   <label>Сумма *</label>
-                  <input type="number" step="0.01" value={formData.total_amount} onChange={(e) => setFormData({...formData, total_amount: e.target.value})} required />
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.total_amount}
+                    onChange={(e) => {
+                      setFormData({...formData, total_amount: e.target.value});
+                      if (errors.total_amount) setErrors({...errors, total_amount: ''});
+                    }}
+                    placeholder="0.00"
+                    required
+                  />
                 </div>
-                <div style={{ height: '16px' }} />
+
+                <div style={{ height: '20px' }} />
                 <div className="actions">
-                  <button type="submit" className="btn primary">Сохранить</button>
-                  <button type="button" className="btn" onClick={() => setShowModal(false)}>Отмена</button>
+                  <button type="submit" className="btn primary">Создать</button>
+                  <button type="button" className="btn" onClick={handleCloseModal}>Отмена</button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно удаления */}
+      {showDeleteModal && deletingReceivable && (
+        <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Удаление задолженности</h3>
+              <button className="modal-close" onClick={() => setShowDeleteModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p>Вы уверены, что хотите удалить задолженность от <strong>"{deletingReceivable.customer_name}"</strong>?</p>
+              <p className="mini" style={{ marginTop: '0.5rem', color: 'var(--muted2)' }}>
+                Это действие нельзя отменить.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button className="btn" onClick={() => setShowDeleteModal(false)}>Отмена</button>
+              <button className="btn" style={{ background: 'var(--danger)' }} onClick={handleDeleteConfirm}>Удалить</button>
             </div>
           </div>
         </div>

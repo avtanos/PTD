@@ -93,6 +93,9 @@ const KS3: React.FC = () => {
     items: [],
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [filters, setFilters] = useState({ status: '', search: '', project_id: '' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(20);
 
   useEffect(() => {
     fetchData();
@@ -102,9 +105,18 @@ const KS3: React.FC = () => {
     try {
       setLoading(true);
       const [formsResponse, projectsResponse, ks2Response] = await Promise.all([
-        axios.get(`${API_URL}/ks3/`),
-        axios.get(`${API_URL}/projects/`),
-        axios.get(`${API_URL}/ks2/`),
+        axios.get(`${API_URL}/ks3/`).catch(err => {
+          console.warn('Ошибка загрузки КС-3:', err);
+          return { data: [] };
+        }),
+        axios.get(`${API_URL}/projects/`).catch(err => {
+          console.warn('Ошибка загрузки проектов:', err);
+          return { data: [] };
+        }),
+        axios.get(`${API_URL}/ks2/`).catch(err => {
+          console.warn('Ошибка загрузки КС-2:', err);
+          return { data: [] };
+        }),
       ]);
       const formsData = Array.isArray(formsResponse.data) ? formsResponse.data : [];
       console.log('KS3: Загружено форм:', formsData.length, formsData);
@@ -125,8 +137,11 @@ const KS3: React.FC = () => {
       console.log('KS3: Загружено проектов:', projectsData.length);
       setProjects(projectsData);
     } catch (error) {
-      console.error('Ошибка загрузки данных:', error);
-      alert('Ошибка загрузки данных');
+      console.error('Критическая ошибка загрузки данных:', error);
+      // Не показываем alert, чтобы не блокировать интерфейс
+      setForms([]);
+      setProjects([]);
+      setKS2Forms([]);
     } finally {
       setLoading(false);
     }
@@ -204,24 +219,34 @@ const KS3: React.FC = () => {
 
   const handleItemChange = (index: number, field: keyof KS3Item, value: any) => {
     const newItems = [...formData.items];
+    if (!newItems[index]) {
+      newItems[index] = { work_name: '', volume: 0, vat_rate: 20 };
+    }
     newItems[index] = { ...newItems[index], [field]: value };
     
     // Автоматический расчет суммы и НДС
     if (field === 'price' || field === 'volume') {
       const item = newItems[index];
       if (item.price && item.volume) {
-        item.amount = item.price * item.volume;
+        item.amount = Number((item.price * item.volume).toFixed(2));
         const vatRate = item.vat_rate || 20;
         if (item.amount) {
-          item.vat_amount = (item.amount * vatRate) / (100 + vatRate);
+          item.vat_amount = Number(((item.amount * vatRate) / (100 + vatRate)).toFixed(2));
           item.amount_with_vat = item.amount;
+        } else {
+          item.vat_amount = 0;
+          item.amount_with_vat = 0;
         }
+      } else {
+        item.amount = 0;
+        item.vat_amount = 0;
+        item.amount_with_vat = 0;
       }
     } else if (field === 'vat_rate') {
       const item = newItems[index];
       if (item.amount) {
-        const vatRate = value || 20;
-        item.vat_amount = (item.amount * vatRate) / (100 + vatRate);
+        const vatRate = Number(value) || 20;
+        item.vat_amount = Number(((item.amount * vatRate) / (100 + vatRate)).toFixed(2));
         item.amount_with_vat = item.amount;
       }
     }
@@ -272,6 +297,11 @@ const KS3: React.FC = () => {
     }
 
     try {
+      // Рассчитываем итоговые суммы
+      const totalAmount = formData.items.reduce((sum, item) => sum + (item.amount || 0), 0);
+      const totalVat = formData.items.reduce((sum, item) => sum + (item.vat_amount || 0), 0);
+      const totalWithVat = formData.items.reduce((sum, item) => sum + (item.amount_with_vat || 0), 0);
+
       const submitData = {
         project_id: Number(formData.project_id),
         ks2_id: formData.ks2_id ? Number(formData.ks2_id) : null,
@@ -284,8 +314,12 @@ const KS3: React.FC = () => {
         object_name: formData.object_name || null,
         status: formData.status,
         notes: formData.notes || null,
-        items: formData.items.map(item => ({
+        total_amount: totalAmount > 0 ? totalAmount : null,
+        total_vat: totalVat > 0 ? totalVat : null,
+        total_with_vat: totalWithVat > 0 ? totalWithVat : null,
+        items: formData.items.map((item, idx) => ({
           ...item,
+          line_number: idx + 1,
           price: item.price || null,
           amount: item.amount || null,
           vat_rate: item.vat_rate || 20,
@@ -344,6 +378,17 @@ const KS3: React.FC = () => {
     return statusOption ? statusOption.label : status;
   };
 
+  const getStatusChip = (status: string) => {
+    const chips: Record<string, string> = {
+      draft: 'info',
+      signed: 'ok',
+      approved: 'ok',
+      in_review: 'warn',
+      rejected: 'danger',
+    };
+    return chips[status] || 'info';
+  };
+
   const getProjectName = (projectId: number) => {
     const project = projects.find(p => p.id === projectId);
     return project ? project.name : `Проект #${projectId}`;
@@ -354,6 +399,27 @@ const KS3: React.FC = () => {
     const ks2 = ks2Forms.find(k => k.id === ks2Id);
     return ks2 ? ks2.number : `КС-2 #${ks2Id}`;
   };
+
+  // Фильтрация форм
+  const filteredForms = forms.filter((form) => {
+    if (filters.status && form.status !== filters.status) return false;
+    if (filters.project_id && form.project_id.toString() !== filters.project_id) return false;
+    if (filters.search) {
+      const search = filters.search.toLowerCase();
+      return (
+        form.number.toLowerCase().includes(search) ||
+        form.contractor?.toLowerCase().includes(search) ||
+        form.customer?.toLowerCase().includes(search) ||
+        form.object_name?.toLowerCase().includes(search) ||
+        getProjectName(form.project_id).toLowerCase().includes(search) ||
+        getKS2Number(form.ks2_id).toLowerCase().includes(search)
+      );
+    }
+    return true;
+  });
+
+  const totalPages = Math.ceil(filteredForms.length / pageSize);
+  const paginatedForms = filteredForms.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   console.log('KS3 Render: forms.length =', forms.length, 'loading =', loading);
 
@@ -374,6 +440,61 @@ const KS3: React.FC = () => {
         </button>
       </div>
 
+      {/* Фильтры и поиск */}
+      {forms.length > 0 && (
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <div className="cardBody">
+            <div className="toolbar">
+              <div className="filters">
+                <div className="field">
+                  <label>Поиск</label>
+                  <input
+                    type="text"
+                    placeholder="По номеру, подрядчику, проекту..."
+                    value={filters.search}
+                    onChange={(e) => {
+                      setFilters({ ...filters, search: e.target.value });
+                      setCurrentPage(1);
+                    }}
+                  />
+                </div>
+                <div className="field">
+                  <label>Статус</label>
+                  <select
+                    value={filters.status}
+                    onChange={(e) => {
+                      setFilters({ ...filters, status: e.target.value });
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <option value="">Все</option>
+                    {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                  </select>
+                </div>
+                <div className="field">
+                  <label>Проект</label>
+                  <select
+                    value={filters.project_id}
+                    onChange={(e) => {
+                      setFilters({ ...filters, project_id: e.target.value });
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <option value="">Все</option>
+                    {projects.map(p => <option key={p.id} value={p.id.toString()}>{p.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              {(filters.search || filters.status || filters.project_id) && (
+                <div className="actions">
+                  <a className="btn small" href="#ks3" onClick={(e) => { e.preventDefault(); setFilters({ status: '', search: '', project_id: '' }); setCurrentPage(1); }}>Сбросить</a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {forms.length === 0 ? (
         <div className="empty-state">
           <p>Формы КС-3 не найдены</p>
@@ -382,109 +503,96 @@ const KS3: React.FC = () => {
           </button>
         </div>
       ) : (
-        <div className="table-container" style={{ 
-          display: 'block', 
-          visibility: 'visible', 
-          opacity: 1,
-          background: 'var(--card)',
-          border: '1px solid var(--line)',
-          borderRadius: '8px',
-          overflow: 'auto'
-        }}>
-          <table className="data-table" style={{ 
-            width: '100%', 
-            borderCollapse: 'collapse',
-            display: 'table',
-            visibility: 'visible',
-            opacity: 1,
-            minWidth: '800px'
-          }}>
-            <thead style={{ display: 'table-header-group', visibility: 'visible', background: 'var(--panel)' }}>
-              <tr style={{ display: 'table-row' }}>
-                <th style={{ display: 'table-cell', padding: '12px', textAlign: 'left', color: 'var(--text)', fontWeight: 600, borderBottom: '2px solid var(--line)' }}>ID</th>
-                <th style={{ display: 'table-cell', padding: '12px', textAlign: 'left', color: 'var(--text)', fontWeight: 600, borderBottom: '2px solid var(--line)' }}>Номер</th>
-                <th style={{ display: 'table-cell', padding: '12px', textAlign: 'left', color: 'var(--text)', fontWeight: 600, borderBottom: '2px solid var(--line)' }}>Дата</th>
-                <th style={{ display: 'table-cell', padding: '12px', textAlign: 'left', color: 'var(--text)', fontWeight: 600, borderBottom: '2px solid var(--line)' }}>Проект</th>
-                <th style={{ display: 'table-cell', padding: '12px', textAlign: 'left', color: 'var(--text)', fontWeight: 600, borderBottom: '2px solid var(--line)' }}>КС-2</th>
-                <th style={{ display: 'table-cell', padding: '12px', textAlign: 'left', color: 'var(--text)', fontWeight: 600, borderBottom: '2px solid var(--line)' }}>Период</th>
-                <th style={{ display: 'table-cell', padding: '12px', textAlign: 'left', color: 'var(--text)', fontWeight: 600, borderBottom: '2px solid var(--line)' }}>Сумма с НДС</th>
-                <th style={{ display: 'table-cell', padding: '12px', textAlign: 'left', color: 'var(--text)', fontWeight: 600, borderBottom: '2px solid var(--line)' }}>Статус</th>
-                <th className="actions-column" style={{ display: 'table-cell', padding: '12px', textAlign: 'center', color: 'var(--text)', fontWeight: 600, borderBottom: '2px solid var(--line)' }}>Действия</th>
-              </tr>
-            </thead>
-            <tbody style={{ display: 'table-row-group', visibility: 'visible' }}>
-              {forms.length === 0 ? (
-                <tr style={{ display: 'table-row' }}>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px', display: 'table-cell', color: 'var(--text)' }}>Нет данных для отображения</td>
+        <>
+          <div className="table-container">
+            <table className="data-table" style={{ 
+              width: '100%', 
+              borderCollapse: 'collapse',
+              minWidth: '800px'
+            }}>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Номер</th>
+                  <th>Дата</th>
+                  <th>Проект</th>
+                  <th>КС-2</th>
+                  <th>Период</th>
+                  <th>Сумма с НДС</th>
+                  <th>Статус</th>
+                  <th className="actions-column">Действия</th>
                 </tr>
-              ) : (
-                forms.map((form) => (
-                <tr key={form.id} style={{ display: 'table-row' }}>
-                  <td style={{ display: 'table-cell', padding: '12px', borderBottom: '1px solid var(--line)', color: 'var(--text)' }}>{form.id}</td>
-                  <td className="project-name" style={{ display: 'table-cell', padding: '12px', borderBottom: '1px solid var(--line)', color: 'var(--text)', fontWeight: 500 }}>{form.number}</td>
-                  <td style={{ display: 'table-cell', padding: '12px', borderBottom: '1px solid var(--line)', color: 'var(--text)' }}>{formatDate(form.date)}</td>
-                  <td style={{ display: 'table-cell', padding: '12px', borderBottom: '1px solid var(--line)', color: 'var(--text)' }}>{getProjectName(form.project_id)}</td>
-                  <td style={{ display: 'table-cell', padding: '12px', borderBottom: '1px solid var(--line)', color: 'var(--text)' }}>{getKS2Number(form.ks2_id)}</td>
-                  <td style={{ display: 'table-cell', padding: '12px', borderBottom: '1px solid var(--line)', color: 'var(--text)' }}>
-                    {form.period_from && form.period_to
-                      ? `${formatDate(form.period_from)} - ${formatDate(form.period_to)}`
-                      : '-'}
-                  </td>
-                  <td style={{ display: 'table-cell', padding: '12px', borderBottom: '1px solid var(--line)', color: 'var(--text)' }}>
-                    <div>{formatKGS(form.total_with_vat)}</div>
-                    <div style={{ fontSize: '0.85em', color: 'var(--muted2)' }}>{formatUSD(form.total_with_vat ? form.total_with_vat / 89 : null)}</div>
-                  </td>
-                  <td style={{ display: 'table-cell', padding: '12px', borderBottom: '1px solid var(--line)' }}>
-                    <span className={`status-badge status-${form.status}`}>
-                      {getStatusLabel(form.status)}
-                    </span>
-                  </td>
-                  <td className="actions-cell" style={{ display: 'table-cell', padding: '12px', borderBottom: '1px solid var(--line)' }}>
-                    <button
-                      className="btn-icon btn-edit"
-                      onClick={() => handleOpenModal(form)}
-                      title="Редактировать"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      className="btn-icon btn-delete"
-                      onClick={() => handleDeleteClick(form)}
-                      title="Удалить"
-                    >
-                      🗑️
-                    </button>
-                  </td>
-                </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {paginatedForms.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} style={{ textAlign: 'center', padding: '40px' }}>Нет данных для отображения</td>
+                  </tr>
+                ) : (
+                  paginatedForms.map((form) => (
+                    <tr key={form.id}>
+                      <td>{form.id}</td>
+                      <td className="project-name">{form.number}</td>
+                      <td>{formatDate(form.date)}</td>
+                      <td>{getProjectName(form.project_id)}</td>
+                      <td>{getKS2Number(form.ks2_id)}</td>
+                      <td>
+                        {form.period_from && form.period_to
+                          ? `${formatDate(form.period_from)} - ${formatDate(form.period_to)}`
+                          : '-'}
+                      </td>
+                      <td className="tRight">
+                        <div>{formatKGS(form.total_with_vat)}</div>
+                        <div style={{ fontSize: '0.85em', color: 'var(--muted2)' }}>{formatUSD(form.total_with_vat ? form.total_with_vat / 89 : null)}</div>
+                      </td>
+                      <td>
+                        <span className={`chip ${getStatusChip(form.status)}`}>
+                          {getStatusLabel(form.status)}
+                        </span>
+                      </td>
+                      <td className="tRight">
+                        <a className="btn small" href="#ks3" onClick={(e) => { e.preventDefault(); handleOpenModal(form); }}>Открыть</a>
+                        <a className="btn small danger" href="#ks3" onClick={(e) => { e.preventDefault(); handleDeleteClick(form); }} style={{ marginLeft: '8px' }}>Уд.</a>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="tableFooter">
+            <div style={{ color: 'var(--muted2)', fontSize: '0.875rem' }}>
+              Показано {paginatedForms.length} из {filteredForms.length} {filteredForms.length !== forms.length && `(всего: ${forms.length})`}
+            </div>
+            {totalPages > 1 && (
+              <div className="pager">
+                <button className="btn small" onClick={() => setCurrentPage((p: number) => Math.max(1, p - 1))} disabled={currentPage === 1}>‹</button>
+                <span>Стр. {currentPage} из {totalPages}</span>
+                <button className="btn small" onClick={() => setCurrentPage((p: number) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>›</button>
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       {/* Модальное окно формы */}
       {showModal && (
-        <div className="modal-overlay" onClick={handleCloseModal}>
-          <div className="modal-content modal-large" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{editingForm ? 'Редактировать форму КС-3' : 'Создать форму КС-3'}</h2>
-              <button className="modal-close" onClick={handleCloseModal}>
-                ×
-              </button>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, padding: '20px', overflowY: 'auto' }} onClick={handleCloseModal}>
+          <div className="card" style={{ maxWidth: '800px', width: '100%', margin: '20px 0' }} onClick={(e) => e.stopPropagation()}>
+            <div className="cardHead">
+              <div className="title">{editingForm ? 'Редактирование' : 'Создание'} формы КС-3</div>
+              <button onClick={handleCloseModal} style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '24px' }}>×</button>
             </div>
-            <form onSubmit={handleSubmit} className="project-form">
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="project_id">
-                    Проект <span className="required">*</span>
-                  </label>
+            <div className="cardBody">
+              <form onSubmit={handleSubmit}>
+                <div className="field">
+                  <label htmlFor="project_id">Проект *</label>
                   <select
                     id="project_id"
                     name="project_id"
                     value={formData.project_id}
                     onChange={handleInputChange}
-                    className={errors.project_id ? 'input-error' : ''}
+                    required
                   >
                     <option value="">Выберите проект</option>
                     {projects.map((project) => (
@@ -493,10 +601,9 @@ const KS3: React.FC = () => {
                       </option>
                     ))}
                   </select>
-                  {errors.project_id && <span className="error-message">{errors.project_id}</span>}
                 </div>
-
-                <div className="form-group">
+                <div style={{ height: '10px' }} />
+                <div className="field">
                   <label htmlFor="ks2_id">Связанный КС-2</label>
                   <select
                     id="ks2_id"
@@ -512,42 +619,33 @@ const KS3: React.FC = () => {
                     ))}
                   </select>
                 </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="number">
-                    Номер справки <span className="required">*</span>
-                  </label>
+                <div style={{ height: '10px' }} />
+                <div className="field">
+                  <label htmlFor="number">Номер справки *</label>
                   <input
                     type="text"
                     id="number"
                     name="number"
                     value={formData.number}
                     onChange={handleInputChange}
-                    className={errors.number ? 'input-error' : ''}
+                    required
                   />
-                  {errors.number && <span className="error-message">{errors.number}</span>}
                 </div>
-
-                <div className="form-group">
-                  <label htmlFor="date">
-                    Дата справки <span className="required">*</span>
-                  </label>
+                <div style={{ height: '10px' }} />
+                <div className="field">
+                  <label htmlFor="date">Дата справки *</label>
                   <input
                     type="date"
                     id="date"
                     name="date"
                     value={formData.date}
                     onChange={handleInputChange}
-                    className={errors.date ? 'input-error' : ''}
+                    required
                   />
-                  {errors.date && <span className="error-message">{errors.date}</span>}
                 </div>
-              </div>
 
-              <div className="form-row">
-                <div className="form-group">
+                <div style={{ height: '10px' }} />
+                <div className="field">
                   <label htmlFor="period_from">Период с</label>
                   <input
                     type="date"
@@ -557,8 +655,8 @@ const KS3: React.FC = () => {
                     onChange={handleInputChange}
                   />
                 </div>
-
-                <div className="form-group">
+                <div style={{ height: '10px' }} />
+                <div className="field">
                   <label htmlFor="period_to">Период по</label>
                   <input
                     type="date"
@@ -568,10 +666,8 @@ const KS3: React.FC = () => {
                     onChange={handleInputChange}
                   />
                 </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
+                <div style={{ height: '10px' }} />
+                <div className="field">
                   <label htmlFor="customer">Заказчик</label>
                   <input
                     type="text"
@@ -581,8 +677,8 @@ const KS3: React.FC = () => {
                     onChange={handleInputChange}
                   />
                 </div>
-
-                <div className="form-group">
+                <div style={{ height: '10px' }} />
+                <div className="field">
                   <label htmlFor="contractor">Подрядчик</label>
                   <input
                     type="text"
@@ -592,79 +688,78 @@ const KS3: React.FC = () => {
                     onChange={handleInputChange}
                   />
                 </div>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="object_name">Наименование объекта</label>
-                <input
-                  type="text"
-                  id="object_name"
-                  name="object_name"
-                  value={formData.object_name}
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="status">Статус</label>
-                <select
-                  id="status"
-                  name="status"
-                  value={formData.status}
-                  onChange={handleInputChange}
-                >
-                  {STATUS_OPTIONS.map((status) => (
-                    <option key={status.value} value={status.value}>
-                      {status.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="notes">Примечания</label>
-                <textarea
-                  id="notes"
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleInputChange}
-                  rows={3}
-                />
-              </div>
-
-              {/* Позиции */}
-              <div className="form-group">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <label>Позиции работ</label>
-                  <button type="button" className="btn btn-primary" onClick={handleAddItem} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
-                    + Добавить позицию
-                  </button>
+                <div style={{ height: '10px' }} />
+                <div className="field">
+                  <label htmlFor="object_name">Наименование объекта</label>
+                  <input
+                    type="text"
+                    id="object_name"
+                    name="object_name"
+                    value={formData.object_name}
+                    onChange={handleInputChange}
+                  />
                 </div>
+                <div style={{ height: '10px' }} />
+                <div className="field">
+                  <label htmlFor="status">Статус</label>
+                  <select
+                    id="status"
+                    name="status"
+                    value={formData.status}
+                    onChange={handleInputChange}
+                  >
+                    {STATUS_OPTIONS.map((status) => (
+                      <option key={status.value} value={status.value}>
+                        {status.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ height: '10px' }} />
+                <div className="field">
+                  <label htmlFor="notes">Примечания</label>
+                  <textarea
+                    id="notes"
+                    name="notes"
+                    value={formData.notes}
+                    onChange={handleInputChange}
+                    rows={3}
+                  />
+                </div>
+                <div style={{ height: '20px' }} />
+                <div style={{ borderTop: '1px solid rgba(36,48,95,0.85)', paddingTop: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <label>Позиции работ</label>
+                    <button type="button" className="btn small" onClick={handleAddItem}>
+                      + Добавить позицию
+                    </button>
+                  </div>
                 {formData.items.length > 0 && (
                   <div className="items-table">
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                    <div className="modal-table-wrapper">
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                       <thead>
-                        <tr style={{ backgroundColor: '#f8f9fa' }}>
-                          <th style={{ padding: '0.5rem', textAlign: 'left' }}>Наименование работ</th>
-                          <th style={{ padding: '0.5rem', textAlign: 'left', width: '70px' }}>Ед.</th>
-                          <th style={{ padding: '0.5rem', textAlign: 'right', width: '90px' }}>Объем</th>
-                          <th style={{ padding: '0.5rem', textAlign: 'right', width: '90px' }}>Цена</th>
-                          <th style={{ padding: '0.5rem', textAlign: 'right', width: '90px' }}>Сумма</th>
-                          <th style={{ padding: '0.5rem', textAlign: 'right', width: '70px' }}>НДС %</th>
-                          <th style={{ padding: '0.5rem', textAlign: 'right', width: '90px' }}>НДС</th>
-                          <th style={{ padding: '0.5rem', textAlign: 'right', width: '90px' }}>С НДС</th>
-                          <th style={{ padding: '0.5rem', width: '40px' }}></th>
+                        <tr style={{ backgroundColor: 'var(--panel)' }}>
+                          <th style={{ padding: '0.5rem', textAlign: 'left', color: 'var(--text)', borderBottom: '1px solid var(--line)' }}>Наименование работ</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'left', width: '70px', color: 'var(--text)', borderBottom: '1px solid var(--line)' }}>Ед.</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'right', width: '90px', color: 'var(--text)', borderBottom: '1px solid var(--line)' }}>Объем</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'right', width: '90px', color: 'var(--text)', borderBottom: '1px solid var(--line)' }}>Цена</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'right', width: '90px', color: 'var(--text)', borderBottom: '1px solid var(--line)' }}>Сумма</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'right', width: '70px', color: 'var(--text)', borderBottom: '1px solid var(--line)' }}>НДС %</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'right', width: '90px', color: 'var(--text)', borderBottom: '1px solid var(--line)' }}>НДС</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'right', width: '90px', color: 'var(--text)', borderBottom: '1px solid var(--line)' }}>С НДС</th>
+                          <th style={{ padding: '0.5rem', width: '40px', borderBottom: '1px solid var(--line)' }}></th>
                         </tr>
                       </thead>
                       <tbody>
                         {formData.items.map((item, index) => (
-                          <tr key={index}>
+                          <tr key={index} style={{ borderBottom: '1px solid var(--line)' }}>
                             <td style={{ padding: '0.5rem' }}>
                               <input
                                 type="text"
                                 value={item.work_name}
                                 onChange={(e) => handleItemChange(index, 'work_name', e.target.value)}
-                                style={{ width: '100%', padding: '0.25rem', border: '1px solid #ced4da', borderRadius: '4px' }}
+                                style={{ padding: '0.5rem', border: '1px solid var(--line)', borderRadius: '4px', background: 'var(--card)', color: 'var(--text)' }}
                                 placeholder="Наименование работ"
                               />
                             </td>
@@ -673,7 +768,7 @@ const KS3: React.FC = () => {
                                 type="text"
                                 value={item.unit || ''}
                                 onChange={(e) => handleItemChange(index, 'unit', e.target.value)}
-                                style={{ width: '100%', padding: '0.25rem', border: '1px solid #ced4da', borderRadius: '4px' }}
+                                style={{ padding: '0.5rem', border: '1px solid var(--line)', borderRadius: '4px', background: 'var(--card)', color: 'var(--text)' }}
                                 placeholder="м²"
                               />
                             </td>
@@ -683,7 +778,7 @@ const KS3: React.FC = () => {
                                 step="0.001"
                                 value={item.volume || ''}
                                 onChange={(e) => handleItemChange(index, 'volume', parseFloat(e.target.value) || 0)}
-                                style={{ width: '100%', padding: '0.25rem', border: '1px solid #ced4da', borderRadius: '4px', textAlign: 'right' }}
+                                style={{ padding: '0.5rem', border: '1px solid var(--line)', borderRadius: '4px', textAlign: 'right', background: 'var(--card)', color: 'var(--text)' }}
                               />
                             </td>
                             <td style={{ padding: '0.5rem' }}>
@@ -692,10 +787,10 @@ const KS3: React.FC = () => {
                                 step="0.01"
                                 value={item.price || ''}
                                 onChange={(e) => handleItemChange(index, 'price', parseFloat(e.target.value) || 0)}
-                                style={{ width: '100%', padding: '0.25rem', border: '1px solid #ced4da', borderRadius: '4px', textAlign: 'right' }}
+                                style={{ padding: '0.5rem', border: '1px solid var(--line)', borderRadius: '4px', textAlign: 'right', background: 'var(--card)', color: 'var(--text)' }}
                               />
                             </td>
-                            <td style={{ padding: '0.5rem', textAlign: 'right' }}>
+                            <td style={{ padding: '0.5rem', textAlign: 'right', color: 'var(--text)' }}>
                               {formatKGS(item.amount)}
                             </td>
                             <td style={{ padding: '0.5rem' }}>
@@ -704,37 +799,74 @@ const KS3: React.FC = () => {
                                 step="0.01"
                                 value={item.vat_rate || 20}
                                 onChange={(e) => handleItemChange(index, 'vat_rate', parseFloat(e.target.value) || 20)}
-                                style={{ width: '100%', padding: '0.25rem', border: '1px solid #ced4da', borderRadius: '4px', textAlign: 'right' }}
+                                style={{ padding: '0.5rem', border: '1px solid var(--line)', borderRadius: '4px', textAlign: 'right', background: 'var(--card)', color: 'var(--text)' }}
                               />
                             </td>
-                            <td style={{ padding: '0.5rem', textAlign: 'right' }}>
+                            <td style={{ padding: '0.5rem', textAlign: 'right', color: 'var(--text)' }}>
                               {formatKGS(item.vat_amount)}
                             </td>
-                            <td style={{ padding: '0.5rem', textAlign: 'right' }}>
+                            <td style={{ padding: '0.5rem', textAlign: 'right', color: 'var(--text)' }}>
                               {formatKGS(item.amount_with_vat)}
                             </td>
                             <td style={{ padding: '0.5rem', textAlign: 'center' }}>
-                              <button type="button" onClick={() => handleRemoveItem(index)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc3545' }}>
+                              <button 
+                                type="button" 
+                                onClick={() => handleRemoveItem(index)} 
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: '1.2rem', padding: '0.25rem 0.5rem' }}
+                                title="Удалить позицию"
+                              >
                                 ×
                               </button>
                             </td>
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                      </table>
+                    </div>
                   </div>
                 )}
               </div>
 
-              <div className="form-actions">
-                <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>
-                  Отмена
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  {editingForm ? 'Сохранить' : 'Создать'}
-                </button>
-              </div>
-            </form>
+              {/* Итоговые суммы */}
+              {formData.items.length > 0 && (
+                <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--panel)', borderRadius: '8px', border: '1px solid var(--line)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                    <div>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--muted2)', marginBottom: '0.25rem' }}>Сумма без НДС:</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text)' }}>
+                        {formatKGS(formData.items.reduce((sum, item) => sum + (item.amount || 0), 0))}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--muted2)', marginBottom: '0.25rem' }}>НДС:</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text)' }}>
+                        {formatKGS(formData.items.reduce((sum, item) => sum + (item.vat_amount || 0), 0))}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--muted2)', marginBottom: '0.25rem' }}>Итого с НДС:</div>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--accent)' }}>
+                        {formatKGS(formData.items.reduce((sum, item) => sum + (item.amount_with_vat || 0), 0))}
+                      </div>
+                      <div style={{ fontSize: '0.85em', color: 'var(--muted2)' }}>
+                        {formatUSD(formData.items.reduce((sum, item) => sum + (item.amount_with_vat || 0), 0) / 89)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+                <div style={{ height: '20px' }} />
+                <div className="actions">
+                  <button type="submit" className="btn primary">
+                    {editingForm ? 'Сохранить' : 'Создать'}
+                  </button>
+                  <button type="button" className="btn" onClick={handleCloseModal}>
+                    Отмена
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

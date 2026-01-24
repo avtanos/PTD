@@ -30,6 +30,7 @@ import Integration1C from './pages/Integration1C';
 import Validation from './pages/Validation';
 import Users from './pages/Users';
 import Receivables from './pages/Receivables';
+import Profile from './pages/Profile';
 import Sales from './pages/Sales';
 
 const API_URL = '/api/v1';
@@ -45,8 +46,11 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    const hash = location.hash.slice(1) || 'dashboard';
-    setCurrentPage(hash);
+    // Поддержка как HashRouter, так и BrowserRouter
+    const hash = location.hash.slice(1);
+    const path = location.pathname.replace('/PTD', '').replace('/', '') || location.pathname.replace('/', '');
+    const page = hash || path || 'dashboard';
+    setCurrentPage(page);
   }, [location]);
 
   useEffect(() => {
@@ -93,6 +97,7 @@ const App: React.FC = () => {
       case 'users': return <Users />;
       case 'receivables': return <Receivables />;
       case 'sales': return <Sales />;
+      case 'profile': return <Profile />;
       default: return <Dashboard />;
     }
   };
@@ -135,24 +140,7 @@ const App: React.FC = () => {
             <div className="sub">ПТО • Сметы • Договоры • ТМЦ • 1С</div>
           </div>
         </div>
-
-        <div className="sideActions">
-          <a className="btn primary small" href="#applications" onClick={(e) => { e.preventDefault(); handleNavClick('applications'); }}>
-            <svg className="ic" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2Zm-8 14H7v-2h4v2Zm6-4H7v-2h10v2Zm0-4H7V7h10v2Z" /></svg>
-            Новая заявка
-          </a>
-          <a className="btn small" href="#projects" onClick={(e) => { e.preventDefault(); handleNavClick('projects'); }}>
-            <svg className="ic" viewBox="0 0 24 24"><path d="M10 4H4v6h6V4Zm10 0h-6v6h6V4ZM10 14H4v6h6v-6Zm10 0h-6v6h6v-6Z" /></svg>
-            Проекты
-          </a>
-        </div>
-
-        <div className="navSearch">
-          <svg className="ic" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79L20 21.49 21.49 20 15.5 14Zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14Z" /></svg>
-          <input type="text" placeholder="Поиск по системе..." />
-          <span className="hint">Ctrl K</span>
-        </div>
-
+          
         <div className="navGroup">Обзор</div>
         <nav className="nav">
           <NavLink to="dashboard" icon="M3 13h8V3H3v10Zm0 8h8v-6H3v6Zm10 0h8V11h-8v10Zm0-18v6h8V3h-8Z">Дашборд</NavLink>
@@ -222,7 +210,15 @@ const App: React.FC = () => {
 
           <div className="globalSearch" role="search">
             <svg className="ic" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79L20 21.49 21.49 20 15.5 14Zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14Z" /></svg>
-            <input type="text" placeholder="Глобальный поиск..." />
+            <input 
+              type="text" 
+              placeholder="Глобальный поиск (Ctrl+K)..." 
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                   alert(`Поиск по запросу "${e.currentTarget.value}" в разработке`);
+                }
+              }}
+            />
           </div>
 
           <div className="pill">
@@ -239,7 +235,7 @@ const App: React.FC = () => {
             </svg>
             {theme === 'dark' ? 'Светлая' : 'Темная'}
           </button>
-          <a className="btn small" href="#users" onClick={(e) => { e.preventDefault(); handleNavClick('users'); }} title="Профиль и доступы">
+          <a className="btn small" href="#profile" onClick={(e) => { e.preventDefault(); handleNavClick('profile'); }} title="Профиль и доступы">
             <svg className="ic" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4Zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4Z" /></svg>
             Кабинет
           </a>

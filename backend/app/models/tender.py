@@ -28,7 +28,7 @@ class Tender(Base):
     submission_deadline = Column(Date, comment="Срок подачи предложений")
     evaluation_date = Column(Date, comment="Дата оценки")
     budget = Column(Numeric(15, 2), comment="Бюджет тендера")
-    status = Column(Enum(TenderStatus), default=TenderStatus.DRAFT, comment="Статус")
+    status = Column(String(50), default="draft", comment="Статус")
     winner_id = Column(Integer, ForeignKey("contractors.id"), comment="Победитель")
     notes = Column(Text, comment="Примечания")
     created_at = Column(DateTime(timezone=True), server_default=func.now())

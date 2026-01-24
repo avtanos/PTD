@@ -58,7 +58,40 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ height: '12px' }}></div>
+          <div style={{ height: '24px' }}></div>
+
+          <div className="title" style={{ fontSize: '16px', marginBottom: '12px' }}>Эффективность реализации проектов</div>
+          <div className="kpi">
+            <div className="kpiItem">
+              <div className="k">Выполнение бюджета</div>
+              <div className="v">78%</div>
+              <div className="s" style={{ marginBottom: '8px' }}>Факт / План расходов</div>
+              <div style={{ height: '6px', background: 'var(--bg)', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ width: '78%', height: '100%', background: 'var(--accent)', borderRadius: '3px' }}></div>
+              </div>
+              <div className="mini" style={{ marginTop: '6px', fontSize: '11px' }}>Соотношение факт. расходов к плановым</div>
+            </div>
+            <div className="kpiItem">
+              <div className="k">Соблюдение графиков</div>
+              <div className="v">92%</div>
+              <div className="s" style={{ marginBottom: '8px' }}>Задачи в срок</div>
+              <div style={{ height: '6px', background: 'var(--bg)', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ width: '92%', height: '100%', background: 'var(--ok)', borderRadius: '3px' }}></div>
+              </div>
+              <div className="mini" style={{ marginTop: '6px', fontSize: '11px' }}>Процент задач, выполненных в срок</div>
+            </div>
+            <div className="kpiItem">
+              <div className="k">Готовность документации</div>
+              <div className="v">45%</div>
+              <div className="s" style={{ marginBottom: '8px' }}>Закрытые акты (КС-2/3)</div>
+              <div style={{ height: '6px', background: 'var(--bg)', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ width: '45%', height: '100%', background: 'var(--warn)', borderRadius: '3px' }}></div>
+              </div>
+              <div className="mini" style={{ marginTop: '6px', fontSize: '11px' }}>% закрытых актов от общего объема</div>
+            </div>
+          </div>
+
+          <div style={{ height: '24px' }}></div>
 
           <div className="grid">
             <div className="card">
@@ -119,34 +152,6 @@ const Dashboard: React.FC = () => {
                     <button className="btn small" type="button">Далее</button>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            <div className="card">
-              <div className="cardHead">
-                <div>
-                  <div className="title">Состояние разработки интерфейса</div>
-                </div>
-                <span className="chip info">Roadmap</span>
-              </div>
-              <div className="cardBody">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Модуль</th>
-                      <th className="tCenter" style={{ width: '22%' }}>Backend</th>
-                      <th className="tCenter" style={{ width: '22%' }}>Frontend</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr><td>Проекты</td><td className="tCenter"><span className="chip ok">Готов</span></td><td className="tCenter"><span className="chip warn">75%</span></td></tr>
-                    <tr><td>Исполн. документация</td><td className="tCenter"><span className="chip ok">Готов</span></td><td className="tCenter"><span className="chip warn">70%</span></td></tr>
-                    <tr><td>КС-2 / КС-3</td><td className="tCenter"><span className="chip ok">Готов</span></td><td className="tCenter"><span className="chip warn">75%</span></td></tr>
-                    <tr><td>Заявки</td><td className="tCenter"><span className="chip ok">Готов</span></td><td className="tCenter"><span className="chip danger">0%</span></td></tr>
-                    <tr><td>Сметы</td><td className="tCenter"><span className="chip ok">Готов</span></td><td className="tCenter"><span className="chip danger">0%</span></td></tr>
-                    <tr><td>Материалы</td><td className="tCenter"><span className="chip ok">Готов</span></td><td className="tCenter"><span className="chip danger">0%</span></td></tr>
-                  </tbody>
-                </table>
               </div>
             </div>
           </div>

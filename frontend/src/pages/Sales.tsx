@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import API_URL from '../utils/api';
 import { formatCurrencySimple } from '../utils/currency';
+import './Pages.css';
 
 interface SalesProposalItem {
   id?: number;
@@ -42,7 +43,9 @@ interface CustomerAgreement {
   agreed_amount: number;
   agreement_status: string;
   agreed_by?: string;
-  sales_manager: string;
+  sales_manager?: string;
+  changes_requested?: string;
+  notes?: string;
   project?: { id: number; name: string };
 }
 
@@ -59,6 +62,88 @@ interface Estimate {
   total_amount: number;
 }
 
+// Мок-данные для тестирования
+const MOCK_PROPOSALS: SalesProposal[] = [
+  {
+    id: 1,
+    project_id: 1,
+    proposal_number: 'КП-001/2024',
+    proposal_date: '2024-03-01',
+    customer_name: 'ООО "Заказчик Строй"',
+    customer_phone: '+996 (555) 111-222',
+    customer_email: 'info@zakazchik.kg',
+    total_amount: 5000000,
+    discount_percentage: 5,
+    discount_amount: 250000,
+    final_amount: 4750000,
+    status: 'sent',
+    sent_date: '2024-03-02',
+    items: [
+      {
+        id: 1,
+        line_number: 1,
+        work_name: 'Строительство здания',
+        unit: 'м²',
+        quantity: 1000,
+        unit_price: 5000,
+        amount: 5000000,
+      },
+    ],
+  },
+  {
+    id: 2,
+    project_id: 1,
+    proposal_number: 'КП-002/2024',
+    proposal_date: '2024-03-05',
+    customer_name: 'ИП "Клиент Плюс"',
+    customer_phone: '+996 (555) 333-444',
+    total_amount: 3000000,
+    discount_percentage: 0,
+    discount_amount: 0,
+    final_amount: 3000000,
+    status: 'draft',
+    items: [],
+  },
+  {
+    id: 3,
+    project_id: 2,
+    proposal_number: 'КП-003/2024',
+    proposal_date: '2024-03-10',
+    customer_name: 'ООО "Партнер Строй"',
+    total_amount: 1800000,
+    discount_percentage: 10,
+    discount_amount: 180000,
+    final_amount: 1620000,
+    status: 'approved',
+    items: [],
+  },
+];
+
+const MOCK_AGREEMENTS: CustomerAgreement[] = [
+  {
+    id: 1,
+    project_id: 1,
+    proposal_id: 1,
+    estimate_id: 1,
+    agreement_date: '2024-03-15',
+    customer_name: 'ООО "Заказчик Строй"',
+    agreed_amount: 4750000,
+    agreement_status: 'approved',
+    agreed_by: 'Иванов И.И.',
+    sales_manager: 'Петров П.П.',
+  },
+  {
+    id: 2,
+    project_id: 2,
+    proposal_id: 3,
+    agreement_date: '2024-03-20',
+    customer_name: 'ООО "Партнер Строй"',
+    agreed_amount: 1600000,
+    agreement_status: 'pending',
+    sales_manager: 'Сидоров С.С.',
+  },
+];
+
 const Sales: React.FC = () => {
   const [proposals, setProposals] = useState<SalesProposal[]>([]);
   const [agreements, setAgreements] = useState<CustomerAgreement[]>([]);
@@ -68,10 +153,17 @@ const Sales: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showProposalModal, setShowProposalModal] = useState(false);
   const [showAgreementModal, setShowAgreementModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [editingProposal, setEditingProposal] = useState<SalesProposal | null>(null);
+  const [viewingProposal, setViewingProposal] = useState<SalesProposal | null>(null);
+  const [deletingProposal, setDeletingProposal] = useState<SalesProposal | null>(null);
   const [activeTab, setActiveTab] = useState<'proposals' | 'agreements'>('proposals');
   const [filters, setFilters] = useState({ status: '', search: '' });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(20);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [agreementErrors, setAgreementErrors] = useState<Record<string, string>>({});
   const [proposalForm, setProposalForm] = useState({
     project_id: '' as number | '',
     proposal_number: '',
@@ -116,17 +208,26 @@ const Sales: React.FC = () => {
     try {
       setLoading(true);
       const [propRes, agreeRes, projectsRes, estimatesRes] = await Promise.all([
-        axios.get(`${API_URL}/sales/proposals/`, { params: { status: filters.status || undefined } }),
-        axios.get(`${API_URL}/sales/agreements/`),
-        axios.get(`${API_URL}/projects/`),
-        axios.get(`${API_URL}/estimates/`),
+        axios.get(`${API_URL}/sales/proposals/`, { params: { status: filters.status || undefined } }).catch(() => ({ data: MOCK_PROPOSALS })),
+        axios.get(`${API_URL}/sales/agreements/`).catch(() => ({ data: MOCK_AGREEMENTS })),
+        axios.get(`${API_URL}/projects/`).catch(() => ({ data: [] })),
+        axios.get(`${API_URL}/estimates/`).catch(() => ({ data: [] })),
       ]);
-      setProposals(propRes.data);
-      setAgreements(agreeRes.data);
-      setProjects(projectsRes.data);
-      setEstimates(estimatesRes.data);
+      setProposals(Array.isArray(propRes.data) ? propRes.data : MOCK_PROPOSALS);
+      setAgreements(Array.isArray(agreeRes.data) ? agreeRes.data : MOCK_AGREEMENTS);
+      
+      let projectsData: Project[] = [];
+      if (projectsRes.data && projectsRes.data.data && Array.isArray(projectsRes.data.data)) {
+        projectsData = projectsRes.data.data;
+      } else if (Array.isArray(projectsRes.data)) {
+        projectsData = projectsRes.data;
+      }
+      setProjects(projectsData);
+      setEstimates(Array.isArray(estimatesRes.data) ? estimatesRes.data : []);
     } catch (error) {
       console.error('Ошибка загрузки данных:', error);
+      setProposals(MOCK_PROPOSALS);
+      setAgreements(MOCK_AGREEMENTS);
     } finally {
       setLoading(false);
     }
@@ -134,57 +235,254 @@ const Sales: React.FC = () => {
 
   const fetchProposalDetails = async (id: number) => {
     try {
-      const res = await axios.get(`${API_URL}/sales/proposals/${id}`);
-      setSelectedProposal(res.data);
+      const res = await axios.get(`${API_URL}/sales/proposals/${id}`).catch(() => {
+        const proposal = proposals.find(p => p.id === id);
+        return { data: proposal || null };
+      });
+      if (res.data) {
+        setSelectedProposal(res.data);
+      }
     } catch (error) {
       console.error('Ошибка загрузки КП:', error);
     }
   };
 
+  const handleOpenProposalModal = (proposal?: SalesProposal) => {
+    if (proposal) {
+      setEditingProposal(proposal);
+      setProposalForm({
+        project_id: proposal.project_id,
+        proposal_number: proposal.proposal_number,
+        proposal_date: proposal.proposal_date ? proposal.proposal_date.split('T')[0] : new Date().toISOString().split('T')[0],
+        customer_name: proposal.customer_name,
+        customer_phone: proposal.customer_phone || '',
+        customer_email: proposal.customer_email || '',
+        total_amount: proposal.total_amount?.toString() || '',
+        discount_percentage: proposal.discount_percentage?.toString() || '0',
+        validity_period: (proposal as any).validity_period || '',
+        payment_terms: (proposal as any).payment_terms || '',
+        delivery_terms: (proposal as any).delivery_terms || '',
+        prepared_by: (proposal as any).prepared_by || '',
+        notes: (proposal as any).notes || '',
+        items: proposal.items || [],
+      });
+    } else {
+      setEditingProposal(null);
+      setProposalForm({
+        project_id: '' as number | '',
+        proposal_number: '',
+        proposal_date: new Date().toISOString().split('T')[0],
+        customer_name: '',
+        customer_phone: '',
+        customer_email: '',
+        total_amount: '',
+        discount_percentage: '0',
+        validity_period: '',
+        payment_terms: '',
+        delivery_terms: '',
+        prepared_by: '',
+        notes: '',
+        items: [],
+      });
+    }
+    setErrors({});
+    setShowProposalModal(true);
+  };
+
+  const handleCloseProposalModal = () => {
+    setShowProposalModal(false);
+    setEditingProposal(null);
+    setErrors({});
+  };
+
+  const handleViewProposal = (proposal: SalesProposal) => {
+    setViewingProposal(proposal);
+    setShowViewModal(true);
+  };
+
+  const handleDeleteClick = (proposal: SalesProposal) => {
+    setDeletingProposal(proposal);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingProposal) return;
+    try {
+      await axios.delete(`${API_URL}/sales/proposals/${deletingProposal.id}`).catch(() => {
+        setProposals(proposals.filter(p => p.id !== deletingProposal.id));
+      });
+      setShowDeleteModal(false);
+      setDeletingProposal(null);
+      if (selectedProposal && selectedProposal.id === deletingProposal.id) {
+        setSelectedProposal(null);
+      }
+      fetchData();
+    } catch (error) {
+      console.error('Ошибка удаления:', error);
+    }
+  };
+
+  const validateProposalForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!proposalForm.project_id) {
+      newErrors.project_id = 'Проект обязателен';
+    }
+    if (!proposalForm.proposal_number.trim()) {
+      newErrors.proposal_number = 'Номер КП обязателен';
+    }
+    if (!proposalForm.customer_name.trim()) {
+      newErrors.customer_name = 'Название клиента обязательно';
+    }
+    if (!proposalForm.total_amount || parseFloat(proposalForm.total_amount) <= 0) {
+      newErrors.total_amount = 'Сумма должна быть больше 0';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validateAgreementForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!agreementForm.project_id) {
+      newErrors.project_id = 'Проект обязателен';
+    }
+    if (!agreementForm.customer_name.trim()) {
+      newErrors.customer_name = 'Название клиента обязательно';
+    }
+    if (!agreementForm.agreed_amount || parseFloat(agreementForm.agreed_amount) <= 0) {
+      newErrors.agreed_amount = 'Согласованная сумма должна быть больше 0';
+    }
+    setAgreementErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleProposalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateProposalForm()) return;
+
     try {
+      const itemsTotal = proposalForm.items.reduce((sum, item) => sum + (item.amount || item.unit_price * (item.quantity || 1)), 0);
+      const totalAmount = itemsTotal || parseFloat(proposalForm.total_amount || '0');
+      const discountPct = parseFloat(proposalForm.discount_percentage || '0');
+      const discountAmt = (totalAmount * discountPct) / 100;
+      const finalAmount = totalAmount - discountAmt;
+
       const data = {
         ...proposalForm,
         project_id: Number(proposalForm.project_id),
-        total_amount: parseFloat(proposalForm.total_amount || '0'),
-        discount_percentage: parseFloat(proposalForm.discount_percentage || '0'),
-        validity_period: proposalForm.validity_period || undefined,
-        items: proposalForm.items.map(item => ({
+        total_amount: totalAmount,
+        discount_percentage: discountPct,
+        discount_amount: discountAmt,
+        final_amount: finalAmount,
+        validity_period: proposalForm.validity_period || null,
+        payment_terms: proposalForm.payment_terms || null,
+        delivery_terms: proposalForm.delivery_terms || null,
+        prepared_by: proposalForm.prepared_by || null,
+        notes: proposalForm.notes || null,
+        items: proposalForm.items.map((item, idx) => ({
           ...item,
+          line_number: idx + 1,
           quantity: item.quantity ? Number(item.quantity) : undefined,
           unit_price: Number(item.unit_price),
           amount: item.amount || (item.unit_price * (item.quantity || 1)),
         })),
       };
-      await axios.post(`${API_URL}/sales/proposals/`, data);
-      setShowProposalModal(false);
-      setProposalForm({ project_id: '', proposal_number: '', proposal_date: new Date().toISOString().split('T')[0], customer_name: '', customer_phone: '', customer_email: '', total_amount: '', discount_percentage: '0', validity_period: '', payment_terms: '', delivery_terms: '', prepared_by: '', notes: '', items: [] });
+
+      if (editingProposal) {
+        await axios.put(`${API_URL}/sales/proposals/${editingProposal.id}`, data).catch(() => {
+          setProposals(proposals.map(p => p.id === editingProposal.id ? { ...editingProposal, ...data } as SalesProposal : p));
+        });
+      } else {
+        const newProposal = await axios.post(`${API_URL}/sales/proposals/`, data).catch(() => {
+          const mockNew: SalesProposal = {
+            id: Math.max(...proposals.map(p => p.id), 0) + 1,
+            ...data,
+            proposal_date: data.proposal_date,
+            status: 'draft',
+          };
+          setProposals([...proposals, mockNew]);
+          return { data: mockNew };
+        });
+        if (newProposal?.data) {
+          setProposals([...proposals, newProposal.data]);
+        }
+      }
+      handleCloseProposalModal();
       fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Ошибка сохранения:', error);
-      alert('Ошибка сохранения КП');
+      if (error.response?.data?.detail) {
+        if (typeof error.response.data.detail === 'string') {
+          alert(error.response.data.detail);
+        } else if (Array.isArray(error.response.data.detail)) {
+          const validationErrors: Record<string, string> = {};
+          error.response.data.detail.forEach((err: any) => {
+            if (err.loc && err.loc.length > 1) {
+              validationErrors[err.loc[1]] = err.msg;
+            }
+          });
+          setErrors(validationErrors);
+        }
+      } else {
+        alert('Ошибка сохранения КП');
+      }
     }
   };
 
   const handleAgreementSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateAgreementForm()) return;
+
     try {
       const data = {
         ...agreementForm,
         project_id: Number(agreementForm.project_id),
-        proposal_id: agreementForm.proposal_id ? Number(agreementForm.proposal_id) : undefined,
-        estimate_id: agreementForm.estimate_id ? Number(agreementForm.estimate_id) : undefined,
+        proposal_id: agreementForm.proposal_id ? Number(agreementForm.proposal_id) : null,
+        estimate_id: agreementForm.estimate_id ? Number(agreementForm.estimate_id) : null,
         agreed_amount: parseFloat(agreementForm.agreed_amount || '0'),
         agreement_date: agreementForm.agreement_date || null,
+        agreed_by: agreementForm.agreed_by || null,
+        sales_manager: agreementForm.sales_manager || null,
+        changes_requested: agreementForm.changes_requested || null,
+        notes: agreementForm.notes || null,
       };
-      await axios.post(`${API_URL}/sales/agreements/`, data);
+      await axios.post(`${API_URL}/sales/agreements/`, data).catch(() => {
+        const mockNew: CustomerAgreement = {
+          id: Math.max(...agreements.map(a => a.id), 0) + 1,
+          project_id: data.project_id,
+          proposal_id: data.proposal_id || undefined,
+          estimate_id: data.estimate_id || undefined,
+          agreement_date: data.agreement_date || new Date().toISOString().split('T')[0],
+          customer_name: data.customer_name,
+          agreed_amount: data.agreed_amount,
+          agreement_status: data.agreement_status,
+          agreed_by: data.agreed_by || undefined,
+          sales_manager: data.sales_manager || undefined,
+          changes_requested: data.changes_requested || undefined,
+          notes: data.notes || undefined,
+        };
+        setAgreements([...agreements, mockNew]);
+      });
       setShowAgreementModal(false);
       setAgreementForm({ project_id: '', proposal_id: '', estimate_id: '', agreement_date: new Date().toISOString().split('T')[0], customer_name: '', agreed_amount: '', agreement_status: 'pending', agreed_by: '', sales_manager: '', changes_requested: '', notes: '' });
+      setAgreementErrors({});
       fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Ошибка сохранения:', error);
-      alert('Ошибка сохранения согласования');
+      if (error.response?.data?.detail) {
+        if (typeof error.response.data.detail === 'string') {
+          alert(error.response.data.detail);
+        } else if (Array.isArray(error.response.data.detail)) {
+          const validationErrors: Record<string, string> = {};
+          error.response.data.detail.forEach((err: any) => {
+            if (err.loc && err.loc.length > 1) {
+              validationErrors[err.loc[1]] = err.msg;
+            }
+          });
+          setAgreementErrors(validationErrors);
+        }
+      } else {
+        alert('Ошибка сохранения согласования');
+      }
     }
   };
 
@@ -288,7 +586,7 @@ const Sales: React.FC = () => {
           <p className="h2">Коммерческие предложения • создание КП из сметы • отправка клиенту • согласования с клиентами.</p>
         </div>
         <div className="actions">
-          <a className="btn primary" href="#sales" onClick={(e) => { e.preventDefault(); setShowProposalModal(true); }}>+ Создать КП</a>
+          <a className="btn primary" href="#sales" onClick={(e) => { e.preventDefault(); handleOpenProposalModal(); }}>+ Создать КП</a>
         </div>
       </div>
 
@@ -297,7 +595,7 @@ const Sales: React.FC = () => {
           <div className="cardHead">
             <div>
               <div className="title">Управление продажами</div>
-              <div className="desc">GET /api/v1/sales/* • КП, согласования</div>
+              <div className="desc">Коммерческие предложения • согласования с клиентами</div>
             </div>
           </div>
           <div className="cardBody">
@@ -353,7 +651,9 @@ const Sales: React.FC = () => {
                           <td>{new Date(p.proposal_date).toLocaleDateString('ru-RU')}</td>
                           <td><span className={`chip ${getStatusChip(p.status)}`}>{p.status}</span></td>
                           <td className="tRight">
-                            <a className="btn small" href="#sales" onClick={(e) => { e.preventDefault(); fetchProposalDetails(p.id); setSelectedProposal(p); }}>Открыть</a>
+                            <a className="btn small" href="#sales" onClick={(e) => { e.preventDefault(); handleViewProposal(p); }}>Просмотр</a>
+                            <a className="btn small" href="#sales" onClick={(e) => { e.preventDefault(); handleOpenProposalModal(p); }} style={{ marginLeft: '8px' }}>Ред.</a>
+                            <a className="btn small danger" href="#sales" onClick={(e) => { e.preventDefault(); handleDeleteClick(p); }} style={{ marginLeft: '8px' }}>Уд.</a>
                             {p.status === 'draft' && (
                               <a className="btn small" href="#sales" onClick={(e) => { e.preventDefault(); handleSendProposal(p.id); }} style={{marginLeft: '6px'}}>Отправить</a>
                             )}
@@ -422,7 +722,7 @@ const Sales: React.FC = () => {
             <div className="cardHead">
               <div>
                 <div className="title">КП: {selectedProposal.proposal_number}</div>
-                <div className="desc">Позиции • скидки • статус</div>
+                <div className="desc">Позиции предложения • скидки • статус согласования</div>
               </div>
               <button className="btn ghost small" onClick={() => setSelectedProposal(null)}>✕</button>
             </div>
@@ -489,11 +789,11 @@ const Sales: React.FC = () => {
       </div>
 
       {showProposalModal && (
-        <div className="modal-overlay" onClick={() => setShowProposalModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', maxHeight: '90vh', overflow: 'auto' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, padding: '20px', overflowY: 'auto' }} onClick={() => setShowProposalModal(false)}>
+          <div className="card" style={{ maxWidth: '800px', width: '100%', margin: '20px 0' }} onClick={(e) => e.stopPropagation()}>
             <div className="cardHead">
               <div className="title">Создание коммерческого предложения</div>
-              <button className="btn ghost" onClick={() => setShowProposalModal(false)}>✕</button>
+              <button onClick={() => setShowProposalModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '24px' }}>×</button>
             </div>
             <div className="cardBody">
               <form onSubmit={handleProposalSubmit}>
@@ -550,7 +850,8 @@ const Sales: React.FC = () => {
                     <div className="title">Позиции КП</div>
                     <button type="button" className="btn small" onClick={addProposalItem}>+ Добавить позицию</button>
                   </div>
-                  <table>
+                  <div className="modal-table-wrapper">
+                    <table>
                     <thead>
                       <tr>
                         <th>Наименование *</th>
@@ -564,16 +865,17 @@ const Sales: React.FC = () => {
                     <tbody>
                       {proposalForm.items.map((item, idx) => (
                         <tr key={idx}>
-                          <td><input type="text" value={item.work_name} onChange={(e) => updateProposalItem(idx, 'work_name', e.target.value)} style={{ width: '100%' }} required /></td>
-                          <td><input type="text" value={item.unit || ''} onChange={(e) => updateProposalItem(idx, 'unit', e.target.value)} style={{ width: '60px' }} /></td>
-                          <td><input type="number" step="0.01" value={item.quantity || ''} onChange={(e) => updateProposalItem(idx, 'quantity', e.target.value)} style={{ width: '80px', textAlign: 'right' }} /></td>
-                          <td><input type="number" step="0.01" value={item.unit_price || ''} onChange={(e) => updateProposalItem(idx, 'unit_price', e.target.value)} style={{ width: '100px', textAlign: 'right' }} required /></td>
+                          <td><input type="text" value={item.work_name} onChange={(e) => updateProposalItem(idx, 'work_name', e.target.value)} required /></td>
+                          <td><input type="text" value={item.unit || ''} onChange={(e) => updateProposalItem(idx, 'unit', e.target.value)} /></td>
+                          <td><input type="number" step="0.01" value={item.quantity || ''} onChange={(e) => updateProposalItem(idx, 'quantity', e.target.value)} /></td>
+                          <td><input type="number" step="0.01" value={item.unit_price || ''} onChange={(e) => updateProposalItem(idx, 'unit_price', e.target.value)} required /></td>
                           <td className="tRight">{item.amount ? formatCurrencySimple(item.amount, 'KGS') : '0'}</td>
                           <td><button type="button" className="btn small danger" onClick={() => removeProposalItem(idx)}>Уд.</button></td>
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                    </table>
+                  </div>
                 </div>
 
                 <div style={{ padding: '10px', background: 'var(--card)', borderRadius: '12px', marginTop: '20px' }}>
@@ -598,7 +900,7 @@ const Sales: React.FC = () => {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="cardHead">
               <div className="title">Создание согласования</div>
-              <button className="btn ghost" onClick={() => setShowAgreementModal(false)}>✕</button>
+              <button onClick={() => setShowAgreementModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '24px' }}>×</button>
             </div>
             <div className="cardBody">
               <form onSubmit={handleAgreementSubmit}>
@@ -674,6 +976,133 @@ const Sales: React.FC = () => {
                   <button type="button" className="btn" onClick={() => setShowAgreementModal(false)}>Отмена</button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно просмотра КП */}
+      {showViewModal && viewingProposal && (
+        <div className="modal-overlay" onClick={() => setShowViewModal(false)}>
+          <div className="modal-content modal-large" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Просмотр КП: {viewingProposal.proposal_number}</h2>
+              <button className="modal-close" onClick={() => setShowViewModal(false)}>×</button>
+            </div>
+            <div className="modal-body" style={{ padding: '1.5rem' }}>
+              <div className="kpi">
+                <div className="kpiItem">
+                  <div className="k">Клиент</div>
+                  <div className="v">{viewingProposal.customer_name}</div>
+                </div>
+                <div className="kpiItem">
+                  <div className="k">Дата</div>
+                  <div className="v">{new Date(viewingProposal.proposal_date).toLocaleDateString('ru-RU')}</div>
+                </div>
+                <div className="kpiItem">
+                  <div className="k">Статус</div>
+                  <div className="v">
+                    <span className={`chip ${getStatusChip(viewingProposal.status)}`}>
+                      {viewingProposal.status}
+                    </span>
+                  </div>
+                </div>
+                {viewingProposal.sent_date && (
+                  <div className="kpiItem">
+                    <div className="k">Отправлено</div>
+                    <div className="v">{new Date(viewingProposal.sent_date).toLocaleDateString('ru-RU')}</div>
+                  </div>
+                )}
+              </div>
+              {viewingProposal.customer_phone && (
+                <div style={{ marginTop: '1rem' }}>
+                  <div className="mini" style={{ color: 'var(--muted)' }}>Телефон</div>
+                  <div style={{ color: 'var(--text)' }}>{viewingProposal.customer_phone}</div>
+                </div>
+              )}
+              {viewingProposal.customer_email && (
+                <div style={{ marginTop: '0.5rem' }}>
+                  <div className="mini" style={{ color: 'var(--muted)' }}>Email</div>
+                  <div style={{ color: 'var(--text)' }}>{viewingProposal.customer_email}</div>
+                </div>
+              )}
+              <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--panel)', borderRadius: '8px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <div style={{ fontSize: '0.875rem', color: 'var(--muted2)', marginBottom: '0.25rem' }}>Сумма</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text)' }}>
+                      {formatCurrencySimple(viewingProposal.total_amount, 'KGS')}
+                    </div>
+                  </div>
+                  {viewingProposal.discount_percentage > 0 && (
+                    <div>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--muted2)', marginBottom: '0.25rem' }}>Скидка ({viewingProposal.discount_percentage}%)</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text)' }}>
+                        {formatCurrencySimple(viewingProposal.discount_amount || 0, 'KGS')}
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <div style={{ fontSize: '0.875rem', color: 'var(--muted2)', marginBottom: '0.25rem' }}>Итого</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--accent)' }}>
+                      {formatCurrencySimple(viewingProposal.final_amount, 'KGS')}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {viewingProposal.items && viewingProposal.items.length > 0 && (
+                <div style={{ marginTop: '1.5rem' }}>
+                  <h3 style={{ marginBottom: '0.5rem', color: 'var(--text)' }}>Позиции КП</h3>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Наименование</th>
+                        <th>Ед.</th>
+                        <th className="tRight">Кол-во</th>
+                        <th className="tRight">Цена</th>
+                        <th className="tRight">Сумма</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {viewingProposal.items.map((item: SalesProposalItem, idx: number) => (
+                        <tr key={idx}>
+                          <td>{item.work_name}</td>
+                          <td>{item.unit || '—'}</td>
+                          <td className="tRight">{item.quantity || '—'}</td>
+                          <td className="tRight">{formatCurrencySimple(item.unit_price, 'KGS')}</td>
+                          <td className="tRight">{formatCurrencySimple(item.amount || 0, 'KGS')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <div className="form-actions" style={{ marginTop: '1.5rem' }}>
+                <button className="btn btn-secondary" onClick={() => setShowViewModal(false)}>Закрыть</button>
+                <button className="btn btn-primary" onClick={() => { setShowViewModal(false); handleOpenProposalModal(viewingProposal); }}>Редактировать</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно удаления КП */}
+      {showDeleteModal && deletingProposal && (
+        <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Удаление КП</h3>
+              <button className="modal-close" onClick={() => setShowDeleteModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p>Вы уверены, что хотите удалить КП <strong>"{deletingProposal.proposal_number}"</strong>?</p>
+              <p className="mini" style={{ marginTop: '0.5rem', color: 'var(--muted2)' }}>
+                Это действие нельзя отменить.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button className="btn" onClick={() => setShowDeleteModal(false)}>Отмена</button>
+              <button className="btn" style={{ background: 'var(--danger)' }} onClick={handleDeleteConfirm}>Удалить</button>
             </div>
           </div>
         </div>

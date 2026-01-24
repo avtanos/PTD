@@ -206,6 +206,33 @@ def get_warehouse_stocks(warehouse_id: int, db: Session = Depends(get_db)):
 
 
 # Movement endpoints
+@router.get("/movements/", response_model=List[MaterialMovement])
+def get_movements(
+    warehouse_id: Optional[int] = None,
+    material_id: Optional[int] = None,
+    movement_type: Optional[str] = None,
+    project_id: Optional[int] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """Получить список движений материалов"""
+    query = db.query(MaterialMovementModel)
+    
+    if warehouse_id:
+        query = query.filter((MaterialMovementModel.from_warehouse_id == warehouse_id) | 
+                             (MaterialMovementModel.to_warehouse_id == warehouse_id))
+    if material_id:
+        query = query.filter(MaterialMovementModel.material_id == material_id)
+    if movement_type:
+        query = query.filter(MaterialMovementModel.movement_type == movement_type)
+    if project_id:
+        query = query.filter(MaterialMovementModel.project_id == project_id)
+        
+    movements = query.order_by(MaterialMovementModel.movement_date.desc()).offset(skip).limit(limit).all()
+    return movements
+
+
 @router.post("/movements/", response_model=MaterialMovement)
 def create_movement(movement: MaterialMovementCreate, db: Session = Depends(get_db)):
     """Создать движение материалов"""

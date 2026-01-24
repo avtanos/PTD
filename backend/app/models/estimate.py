@@ -43,6 +43,7 @@ class Estimate(Base):
     developed_by = Column(String(200), comment="Разработал")
     approved_by = Column(String(200), comment="Утвердил")
     file_path = Column(String(1000), comment="Путь к файлу")
+    status = Column(String(50), default="draft", comment="Статус")
     is_active = Column(Boolean, default=True, comment="Активна")
     notes = Column(Text, comment="Примечания")
     created_at = Column(DateTime(timezone=True), server_default=func.now())

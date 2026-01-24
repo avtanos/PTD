@@ -3,114 +3,11 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from decimal import Decimal
 from app.db.database import get_db
-from app.models.estimate import Estimate, EstimateItem, RelatedCost
-from pydantic import BaseModel
+from app.models.estimate import Estimate as EstimateModel, EstimateItem as EstimateItemModel, RelatedCost as RelatedCostModel
+from app.schemas.estimate import Estimate, EstimateCreate, EstimateUpdate
 from datetime import date, datetime
 
 router = APIRouter()
-
-
-class EstimateItemBase(BaseModel):
-    item_type: str
-    line_number: Optional[int] = None
-    code: Optional[str] = None
-    work_name: str
-    unit: Optional[str] = None
-    quantity: Decimal
-    unit_price: Optional[Decimal] = None
-    total_price: Optional[Decimal] = None
-    materials_price: Optional[Decimal] = None
-    labor_price: Optional[Decimal] = None
-    equipment_price: Optional[Decimal] = None
-    standard_rate_id: Optional[int] = None
-    notes: Optional[str] = None
-
-
-class EstimateItemCreate(EstimateItemBase):
-    pass
-
-
-class EstimateItem(EstimateItemBase):
-    id: int
-    estimate_id: int
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class RelatedCostBase(BaseModel):
-    cost_type: str
-    description: Optional[str] = None
-    amount: Decimal
-    percentage: Optional[Decimal] = None
-    notes: Optional[str] = None
-
-
-class RelatedCostCreate(RelatedCostBase):
-    pass
-
-
-class RelatedCost(RelatedCostBase):
-    id: int
-    estimate_id: int
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class EstimateBase(BaseModel):
-    project_id: int
-    estimate_type: str
-    number: str
-    name: str
-    date: date
-    version: Optional[str] = None
-    base_estimate_id: Optional[int] = None
-    developed_by: Optional[str] = None
-    approved_by: Optional[str] = None
-    file_path: Optional[str] = None
-    is_active: bool = True
-    notes: Optional[str] = None
-
-
-class EstimateCreate(EstimateBase):
-    items: List[EstimateItemCreate] = []
-    related_cost_items: List[RelatedCostCreate] = []
-
-
-class EstimateUpdate(BaseModel):
-    project_id: Optional[int] = None
-    estimate_type: Optional[str] = None
-    number: Optional[str] = None
-    name: Optional[str] = None
-    date: Optional[date] = None
-    version: Optional[str] = None
-    base_estimate_id: Optional[int] = None
-    developed_by: Optional[str] = None
-    approved_by: Optional[str] = None
-    file_path: Optional[str] = None
-    is_active: Optional[bool] = None
-    notes: Optional[str] = None
-
-
-class Estimate(EstimateBase):
-    id: int
-    total_amount: Optional[Decimal] = None
-    materials_cost: Optional[Decimal] = None
-    labor_cost: Optional[Decimal] = None
-    equipment_cost: Optional[Decimal] = None
-    overhead_cost: Optional[Decimal] = None
-    related_costs: Optional[Decimal] = None
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-    items: List[EstimateItem] = []
-    related_cost_items: List[RelatedCost] = []
-
-    class Config:
-        from_attributes = True
-
 
 @router.get("/", response_model=List[Estimate])
 def get_estimates(project_id: Optional[int] = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
@@ -149,7 +46,7 @@ def create_estimate(estimate: EstimateCreate, db: Session = Depends(get_db)):
     total_related = Decimal(0)
     
     for item_data in items_data:
-        item = EstimateItem(estimate_id=db_estimate.id, **item_data.model_dump())
+        item = EstimateItemModel(estimate_id=db_estimate.id, **item_data.model_dump())
         db.add(item)
         if item.materials_price:
             total_materials += item.materials_price
@@ -161,7 +58,7 @@ def create_estimate(estimate: EstimateCreate, db: Session = Depends(get_db)):
             total_amount += item.total_price
     
     for cost_data in related_costs_data:
-        cost = RelatedCost(estimate_id=db_estimate.id, **cost_data.model_dump())
+        cost = RelatedCostModel(estimate_id=db_estimate.id, **cost_data.model_dump())
         db.add(cost)
         total_related += cost.amount
     
@@ -179,14 +76,66 @@ def create_estimate(estimate: EstimateCreate, db: Session = Depends(get_db)):
 @router.put("/{estimate_id}", response_model=Estimate)
 def update_estimate(estimate_id: int, estimate: EstimateUpdate, db: Session = Depends(get_db)):
     """Обновить смету"""
-    db_estimate = db.query(Estimate).filter(Estimate.id == estimate_id).first()
+    db_estimate = db.query(EstimateModel).filter(EstimateModel.id == estimate_id).first()
     if not db_estimate:
         raise HTTPException(status_code=404, detail="Смета не найдена")
     
-    update_data = estimate.model_dump(exclude_unset=True)
+    update_data = estimate.model_dump(exclude_unset=True, exclude={"items", "related_cost_items"})
     for field, value in update_data.items():
         setattr(db_estimate, field, value)
     
+    # Update items if provided
+    if estimate.items is not None:
+        # Delete existing items
+        db.query(EstimateItemModel).filter(EstimateItemModel.estimate_id == estimate_id).delete()
+        
+        # Add new items
+        total_materials = Decimal(0)
+        total_labor = Decimal(0)
+        total_equipment = Decimal(0)
+        total_amount = Decimal(0)
+        
+        for item_data in estimate.items:
+            item = EstimateItemModel(estimate_id=estimate_id, **item_data.model_dump())
+            db.add(item)
+            if item.materials_price:
+                total_materials += item.materials_price
+            if item.labor_price:
+                total_labor += item.labor_price
+            if item.equipment_price:
+                total_equipment += item.equipment_price
+            if item.total_price:
+                total_amount += item.total_price
+                
+        db_estimate.materials_cost = total_materials
+        db_estimate.labor_cost = total_labor
+        db_estimate.equipment_cost = total_equipment
+        # Note: related costs need to be added to total_amount separately if not updating related_cost_items
+        
+    # Update related costs if provided
+    if estimate.related_cost_items is not None:
+        # Delete existing related costs
+        db.query(RelatedCostModel).filter(RelatedCostModel.estimate_id == estimate_id).delete()
+        
+        # Add new related costs
+        total_related = Decimal(0)
+        for cost_data in estimate.related_cost_items:
+            cost = RelatedCostModel(estimate_id=estimate_id, **cost_data.model_dump())
+            db.add(cost)
+            total_related += cost.amount
+            
+        db_estimate.related_costs = total_related
+
+    # Recalculate total amount
+    db.flush()
+    db.refresh(db_estimate)
+    
+    # Recalculate if we only updated one list but not the other, we need current values
+    current_items_total = sum([item.total_price or 0 for item in db_estimate.items])
+    current_related_total = sum([cost.amount or 0 for cost in db_estimate.related_cost_items])
+    
+    db_estimate.total_amount = current_items_total + current_related_total
+
     db.commit()
     db.refresh(db_estimate)
     return db_estimate

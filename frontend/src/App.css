@@ -44,6 +44,59 @@
   box-sizing: border-box;
 }
 
+/* Beautiful Scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(127, 138, 196, 0.3); /* muted2 with opacity */
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(127, 138, 196, 0.6); /* muted2 more opaque */
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Firefox support */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(127, 138, 196, 0.3) transparent;
+}
+
+/* Sidebar specific scrollbar adjustments */
+.sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background-color: rgba(127, 138, 196, 0.15);
+}
+
+.sidebar:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(127, 138, 196, 0.4);
+}
+
+[data-theme="light"] .sidebar::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .sidebar:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
 html, body {
   height: 100%;
   margin: 0;
@@ -98,6 +151,8 @@ a {
   backdrop-filter: blur(10px);
   overflow: auto;
   transition: background-color 0.3s ease, border-color 0.3s ease;
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: var(--muted2) transparent; /* Firefox */
 }
 
 [data-theme="dark"] .sidebar {
@@ -449,7 +504,6 @@ a {
 }
 
 .page {
-  display: none;
   animation: fade 0.15s ease;
 }
 
@@ -504,6 +558,7 @@ a {
   font-size: 14px;
   color: var(--muted);
   margin: 0;
+  padding-bottom: 2px;
 }
 
 /* Cards + layout */
@@ -715,7 +770,8 @@ a {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  align-items: center;
+  align-items: flex-end;
+  flex: 1;
 }
 
 .field {
@@ -723,6 +779,7 @@ a {
   flex-direction: column;
   gap: 6px;
   min-width: 160px;
+  flex: 1 1 auto;
 }
 
 .field label {

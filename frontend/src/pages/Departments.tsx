@@ -92,7 +92,7 @@ const Departments: React.FC = () => {
           <div className="cardHead">
             <div>
               <div className="title">Реестр подразделений</div>
-              <div className="desc">GET /api/v1/departments • CRUD операции</div>
+              <div className="desc">Создание, редактирование, удаление подразделений</div>
             </div>
             <span className="chip info">Справочник</span>
           </div>

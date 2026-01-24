@@ -22,7 +22,7 @@ class ProjectDocumentation(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
-    doc_type = Column(Enum(DocumentationType, native_enum=False), nullable=False, comment="Тип документации")
+    doc_type = Column(String(50), nullable=False, comment="Тип документации")
     name = Column(String(500), nullable=False, comment="Наименование")
     number = Column(String(100), comment="Номер документа")
     version = Column(String(50), comment="Версия")

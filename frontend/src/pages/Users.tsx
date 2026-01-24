@@ -108,7 +108,7 @@ const Users: React.FC = () => {
         <div className="cardHead">
           <div>
             <div className="title">Управление пользователями и правами</div>
-            <div className="desc">GET /api/v1/users/* • пользователи, разрешения</div>
+            <div className="desc">Управление пользователями • назначение ролей • управление разрешениями</div>
           </div>
         </div>
         <div className="cardBody">

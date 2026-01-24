@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import API_URL from '../utils/api';
+import './Pages.css';
 
 interface GPR {
   id: number;
@@ -39,6 +40,8 @@ const GPR: React.FC = () => {
     status: 'draft',
     description: '',
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [filters, setFilters] = useState({ status: '', search: '', project_id: '' });
 
   useEffect(() => {
     fetchData();
@@ -48,8 +51,14 @@ const GPR: React.FC = () => {
     try {
       setLoading(true);
       const [gprRes, projRes] = await Promise.all([
-        axios.get(`${API_URL}/gpr/`),
-        axios.get(`${API_URL}/projects/`),
+        axios.get(`${API_URL}/gpr/`).catch(err => {
+          console.warn('Ошибка загрузки ГПР:', err);
+          return { data: [] };
+        }),
+        axios.get(`${API_URL}/projects/`).catch(err => {
+          console.warn('Ошибка загрузки проектов:', err);
+          return { data: [] };
+        }),
       ]);
       const gprsData = Array.isArray(gprRes.data) ? gprRes.data : [];
       setGprs(gprsData);
@@ -104,6 +113,7 @@ const GPR: React.FC = () => {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingGpr(null);
+    setErrors({});
     setFormData({
       project_id: '',
       name: '',
@@ -117,8 +127,25 @@ const GPR: React.FC = () => {
     });
   };
 
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.project_id) {
+      newErrors.project_id = 'Проект обязателен';
+    }
+    if (!formData.name.trim()) {
+      newErrors.name = 'Наименование обязательно';
+    }
+    if (formData.start_date && formData.end_date && new Date(formData.start_date) > new Date(formData.end_date)) {
+      newErrors.end_date = 'Дата окончания должна быть позже даты начала';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) return;
+
     try {
       const submitData = {
         project_id: Number(formData.project_id),
@@ -143,7 +170,21 @@ const GPR: React.FC = () => {
       fetchData();
     } catch (error: any) {
       console.error('Ошибка сохранения:', error);
-      alert(error.response?.data?.detail || 'Ошибка сохранения ГПР');
+      if (error.response?.data?.detail) {
+        if (typeof error.response.data.detail === 'string') {
+          alert(error.response.data.detail);
+        } else if (Array.isArray(error.response.data.detail)) {
+          const validationErrors: Record<string, string> = {};
+          error.response.data.detail.forEach((err: any) => {
+            if (err.loc && err.loc.length > 1) {
+              validationErrors[err.loc[1]] = err.msg;
+            }
+          });
+          setErrors(validationErrors);
+        }
+      } else {
+        alert('Ошибка сохранения ГПР');
+      }
     }
   };
 
@@ -182,6 +223,32 @@ const GPR: React.FC = () => {
     return statusLabels[status] || status;
   };
 
+  const getStatusChip = (status: string) => {
+    const chips: Record<string, string> = {
+      draft: 'info',
+      active: 'ok',
+      completed: 'ok',
+      suspended: 'warn',
+      archived: 'info',
+    };
+    return chips[status] || 'info';
+  };
+
+  // Фильтрация ГПР
+  const filteredGprs = gprs.filter((gpr) => {
+    if (filters.status && gpr.status !== filters.status) return false;
+    if (filters.project_id && gpr.project_id.toString() !== filters.project_id) return false;
+    if (filters.search) {
+      const search = filters.search.toLowerCase();
+      return (
+        gpr.name.toLowerCase().includes(search) ||
+        getProjectName(gpr.project_id).toLowerCase().includes(search) ||
+        (gpr.version && gpr.version.toLowerCase().includes(search))
+      );
+    }
+    return true;
+  });
+
   if (loading) return <div className="loading">Загрузка...</div>;
 
   return (
@@ -197,14 +264,64 @@ const GPR: React.FC = () => {
         </div>
       </div>
 
+      {/* Фильтры */}
+      {gprs.length > 0 && (
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <div className="cardBody">
+            <div className="toolbar">
+              <div className="filters">
+                <div className="field">
+                  <label>Поиск</label>
+                  <input
+                    type="text"
+                    placeholder="По наименованию, проекту, версии..."
+                    value={filters.search}
+                    onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                  />
+                </div>
+                <div className="field">
+                  <label>Статус</label>
+                  <select
+                    value={filters.status}
+                    onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                  >
+                    <option value="">Все</option>
+                    <option value="draft">Черновик</option>
+                    <option value="active">Активен</option>
+                    <option value="completed">Завершен</option>
+                    <option value="suspended">Приостановлен</option>
+                    <option value="archived">Архивирован</option>
+                  </select>
+                </div>
+                <div className="field">
+                  <label>Проект</label>
+                  <select
+                    value={filters.project_id}
+                    onChange={(e) => setFilters({ ...filters, project_id: e.target.value })}
+                  >
+                    <option value="">Все</option>
+                    {projects.map(p => <option key={p.id} value={p.id.toString()}>{p.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              {(filters.search || filters.status || filters.project_id) && (
+                <div className="actions">
+                  <a className="btn small" href="#gpr" onClick={(e) => { e.preventDefault(); setFilters({ status: '', search: '', project_id: '' }); }}>Сбросить</a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid">
         <div className="card">
           <div className="cardHead">
             <div>
               <div className="title">Реестр ГПР</div>
-              <div className="desc">GET /api/v1/gpr • CRUD • задачи графика</div>
+              <div className="desc">Создание, редактирование, удаление • управление задачами графика</div>
             </div>
-            <span className="chip info">Связь: project_id</span>
+            <span className="chip info">Связано с: Проекты</span>
           </div>
           <div className="cardBody">
             <table>
@@ -220,12 +337,12 @@ const GPR: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {gprs.length === 0 ? (
+                {filteredGprs.length === 0 ? (
                   <tr>
                     <td colSpan={7} style={{ textAlign: 'center', padding: '40px' }}>ГПР не найдены</td>
                   </tr>
                 ) : (
-                  gprs.map((gpr) => (
+                  filteredGprs.map((gpr) => (
                     <tr key={gpr.id}>
                       <td>{gpr.id}</td>
                       <td>{gpr.name}</td>
@@ -236,7 +353,11 @@ const GPR: React.FC = () => {
                           ? `${new Date(gpr.start_date).toLocaleDateString('ru-RU')} - ${new Date(gpr.end_date).toLocaleDateString('ru-RU')}`
                           : '-'}
                       </td>
-                      <td><span className="chip info">{getStatusLabel(gpr.status)}</span></td>
+                      <td>
+                        <span className={`chip ${getStatusChip(gpr.status)}`}>
+                          {getStatusLabel(gpr.status)}
+                        </span>
+                      </td>
                       <td className="tRight">
                         <a className="btn small" href="#gpr" onClick={(e) => { e.preventDefault(); handleOpenModal(gpr); }}>Редактировать</a>
                         <a className="btn small" href="#gpr" onClick={(e) => { e.preventDefault(); handleDeleteClick(gpr); }} style={{ marginLeft: '8px', background: 'var(--danger)' }}>Удалить</a>
@@ -247,84 +368,158 @@ const GPR: React.FC = () => {
               </tbody>
             </table>
           </div>
+          {filteredGprs.length > 0 && (
+            <div className="tableFooter">
+              <div style={{ color: 'var(--muted2)', fontSize: '0.875rem' }}>
+                Найдено: {filteredGprs.length} {filteredGprs.length !== gprs.length && `(всего: ${gprs.length})`}
+              </div>
+            </div>
+          )}
         </div>
 
+        {/* Модальное окно формы */}
         {showModal && (
-          <div className="card">
-            <div className="cardHead">
-              <div className="title">{editingGpr ? 'Редактирование ГПР' : 'Создание ГПР'}</div>
-            </div>
-            <div className="cardBody">
-              <form onSubmit={handleSubmit}>
-                <div className="field">
-                  <label>Проект *</label>
-                  <select value={formData.project_id} onChange={(e) => setFormData({...formData, project_id: e.target.value ? parseInt(e.target.value) : ''})} required>
-                    <option value="">Выберите проект</option>
-                    {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                </div>
-                <div style={{ height: '10px' }} />
-                <div className="field">
-                  <label>Наименование *</label>
-                  <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} required />
-                </div>
-                <div style={{ height: '10px' }} />
-                <div className="field">
-                  <label>Версия</label>
-                  <input type="text" value={formData.version} onChange={(e) => setFormData({...formData, version: e.target.value})} />
-                </div>
-                <div style={{ height: '10px' }} />
-                <div className="field">
-                  <label>Дата начала *</label>
-                  <input type="date" value={formData.start_date} onChange={(e) => setFormData({...formData, start_date: e.target.value})} required />
-                </div>
-                <div style={{ height: '10px' }} />
-                <div className="field">
-                  <label>Дата окончания *</label>
-                  <input type="date" value={formData.end_date} onChange={(e) => setFormData({...formData, end_date: e.target.value})} required />
-                </div>
-                <div style={{ height: '10px' }} />
-                <div className="field">
-                  <label>Создал</label>
-                  <input type="text" value={formData.created_by} onChange={(e) => setFormData({...formData, created_by: e.target.value})} />
-                </div>
-                <div style={{ height: '10px' }} />
-                <div className="field">
-                  <label>Утвердил</label>
-                  <input type="text" value={formData.approved_by} onChange={(e) => setFormData({...formData, approved_by: e.target.value})} />
-                </div>
-                <div style={{ height: '10px' }} />
-                <div className="field">
-                  <label>Статус</label>
-                  <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})}>
-                    <option value="draft">Черновик</option>
-                    <option value="approved">Утвержден</option>
-                    <option value="active">Активен</option>
-                  </select>
-                </div>
-                <div style={{ height: '10px' }} />
-                <div className="field">
-                  <label>Описание</label>
-                  <textarea value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} rows={3} />
-                </div>
-                <div style={{ height: '16px' }} />
-                <div className="actions">
-                  <button type="submit" className="btn primary">{editingGpr ? 'Сохранить' : 'Создать'}</button>
-                  <button type="button" className="btn" onClick={handleCloseModal}>Отмена</button>
-                </div>
-              </form>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, padding: '20px', overflowY: 'auto' }} onClick={handleCloseModal}>
+            <div className="card" style={{ maxWidth: '800px', width: '100%', margin: '20px 0' }} onClick={(e) => e.stopPropagation()}>
+              <div className="cardHead">
+                <div className="title">{editingGpr ? 'Редактирование' : 'Создание'} ГПР</div>
+                <button onClick={handleCloseModal} style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '24px' }}>×</button>
+              </div>
+              <div className="cardBody">
+                <form onSubmit={handleSubmit}>
+                  <div className="field">
+                    <label>Проект *</label>
+                    <select 
+                      value={formData.project_id} 
+                      onChange={(e) => {
+                        setFormData({...formData, project_id: e.target.value ? parseInt(e.target.value) : ''});
+                        if (errors.project_id) setErrors({...errors, project_id: ''});
+                      }}
+                      required
+                    >
+                      <option value="">Выберите проект</option>
+                      {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ height: '10px' }} />
+                  <div className="field">
+                    <label>Наименование *</label>
+                    <input 
+                      type="text" 
+                      value={formData.name} 
+                      onChange={(e) => {
+                        setFormData({...formData, name: e.target.value});
+                        if (errors.name) setErrors({...errors, name: ''});
+                      }}
+                      placeholder="Например: График производства работ по объекту..."
+                      required
+                    />
+                  </div>
+
+                  <div style={{ height: '10px' }} />
+                  <div className="field">
+                    <label>Версия</label>
+                    <input 
+                      type="text" 
+                      value={formData.version} 
+                      onChange={(e) => setFormData({...formData, version: e.target.value})}
+                      placeholder="1.0"
+                    />
+                  </div>
+                  <div style={{ height: '10px' }} />
+                  <div className="field">
+                    <label>Статус</label>
+                    <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})}>
+                      <option value="draft">Черновик</option>
+                      <option value="active">Активен</option>
+                      <option value="completed">Завершен</option>
+                      <option value="suspended">Приостановлен</option>
+                      <option value="archived">Архивирован</option>
+                    </select>
+                  </div>
+                  <div style={{ height: '10px' }} />
+                  <div className="field">
+                    <label>Дата начала</label>
+                    <input 
+                      type="date" 
+                      value={formData.start_date} 
+                      onChange={(e) => {
+                        setFormData({...formData, start_date: e.target.value});
+                        if (errors.end_date) setErrors({...errors, end_date: ''});
+                      }}
+                    />
+                  </div>
+                  <div style={{ height: '10px' }} />
+                  <div className="field">
+                    <label>Дата окончания</label>
+                    <input 
+                      type="date" 
+                      value={formData.end_date} 
+                      onChange={(e) => {
+                        setFormData({...formData, end_date: e.target.value});
+                        if (errors.end_date) setErrors({...errors, end_date: ''});
+                      }}
+                      min={formData.start_date || undefined}
+                    />
+                  </div>
+                  <div style={{ height: '10px' }} />
+                  <div className="field">
+                    <label>Создал</label>
+                    <input 
+                      type="text" 
+                      value={formData.created_by} 
+                      onChange={(e) => setFormData({...formData, created_by: e.target.value})}
+                      placeholder="ФИО создателя"
+                    />
+                  </div>
+                  <div style={{ height: '10px' }} />
+                  <div className="field">
+                    <label>Утвердил</label>
+                    <input 
+                      type="text" 
+                      value={formData.approved_by} 
+                      onChange={(e) => setFormData({...formData, approved_by: e.target.value})}
+                      placeholder="ФИО утверждающего"
+                    />
+                  </div>
+                  <div style={{ height: '10px' }} />
+                  <div className="field">
+                    <label>Описание</label>
+                    <textarea 
+                      value={formData.description} 
+                      onChange={(e) => setFormData({...formData, description: e.target.value})} 
+                      rows={4}
+                      placeholder="Дополнительная информация о графике производства работ..."
+                    />
+                  </div>
+                  <div style={{ height: '20px' }} />
+                  <div className="actions">
+                    <button type="submit" className="btn primary">
+                      {editingGpr ? 'Сохранить' : 'Создать'}
+                    </button>
+                    <button type="button" className="btn" onClick={handleCloseModal}>
+                      Отмена
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
         )}
 
+        {/* Модальное окно удаления */}
         {showDeleteModal && deletingGpr && (
           <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
             <div className="modal" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
                 <h3>Удаление ГПР</h3>
+                <button className="modal-close" onClick={() => setShowDeleteModal(false)}>×</button>
               </div>
               <div className="modal-body">
-                <p>Вы уверены, что хотите удалить ГПР "{deletingGpr.name}"?</p>
+                <p>Вы уверены, что хотите удалить ГПР <strong>"{deletingGpr.name}"</strong>?</p>
+                <p className="mini" style={{ marginTop: '0.5rem', color: 'var(--muted2)' }}>
+                  Это действие нельзя отменить.
+                </p>
               </div>
               <div className="modal-footer">
                 <button className="btn" onClick={() => setShowDeleteModal(false)}>Отмена</button>

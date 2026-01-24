@@ -163,39 +163,78 @@ class CostControl(CostControlBase):
         from_attributes = True
 
 
-@router.post("/estimates/{estimate_id}/validate-volume", response_model=VolumeProjectMatch)
+@router.post("/estimates/{estimate_id}/validate-volume", response_model=List[VolumeProjectMatch])
 def validate_volume_against_project(estimate_id: int, construct_id: Optional[int] = None, db: Session = Depends(get_db)):
-    """Проверить соответствие объемов работ проекту"""
+    """Проверить соответствие объемов работ проекту и сформировать отчет о валидации"""
     estimate = db.query(EstimateModel).filter(EstimateModel.id == estimate_id).first()
     if not estimate:
         raise HTTPException(status_code=404, detail="Смета не найдена")
     
-    # Получаем объемы по проекту из проектной документации
-    project_docs = db.query(ProjectDocumentationModel).filter(
-        ProjectDocumentationModel.project_id == estimate.project_id
-    ).all()
+    # 1. Очистка старых результатов проверки
+    db.query(VolumeProjectMatchModel).filter(VolumeProjectMatchModel.estimate_id == estimate_id).delete()
+    db.query(EstimateValidationModel).filter(EstimateValidationModel.estimate_id == estimate_id).delete()
     
     # Получаем объемы работ из ВОР
-    work_volumes = db.query(WorkVolumeModel).filter(
+    work_volumes_query = db.query(WorkVolumeModel).filter(
         WorkVolumeModel.project_id == estimate.project_id
     )
     if construct_id:
-        work_volumes = work_volumes.filter(WorkVolumeModel.construct_id == construct_id)
-    work_volumes = work_volumes.all()
+        work_volumes_query = work_volumes_query.filter(WorkVolumeModel.construct_id == construct_id)
+    work_volumes = work_volumes_query.all()
     
-    # Сравниваем объемы
+    # 2. Сравнение объемов (Алгоритм сопоставления)
     matches = []
+    
+    # Словари для быстрого поиска
+    estimate_items_map = {} # work_name -> quantity
+    for item in estimate.items:
+        # Нормализация имени для поиска
+        norm_name = item.work_name.lower().strip()
+        estimate_items_map[norm_name] = estimate_items_map.get(norm_name, Decimal(0)) + item.quantity
+
     for wv in work_volumes:
         project_volume = wv.planned_volume
         estimated_volume = Decimal(0)
-        # Находим соответствующий объем в смете
-        for item in estimate.items:
-            if item.work_name and wv.work_name and item.work_name.lower() in wv.work_name.lower():
-                estimated_volume += item.quantity
         
+        # Поиск совпадений (Эвристика)
+        # 1. По коду (если есть)
+        found = False
+        if wv.work_code:
+            # Логика поиска по коду, если бы он был в позициях сметы
+            pass 
+            
+        # 2. По наименованию (точное или частичное совпадение)
+        if not found and wv.work_name:
+            wv_name = wv.work_name.lower().strip()
+            # Прямое совпадение
+            if wv_name in estimate_items_map:
+                estimated_volume = estimate_items_map[wv_name]
+                found = True
+            else:
+                # Поиск вхождения слов (простой fuzzy match)
+                wv_words = set(wv_name.split())
+                best_match_score = 0
+                
+                for est_name, qty in estimate_items_map.items():
+                    est_words = set(est_name.split())
+                    common = wv_words.intersection(est_words)
+                    if not common: 
+                        continue
+                        
+                    score = len(common) / max(len(wv_words), len(est_words))
+                    if score > 0.5: # Порог схожести 50%
+                        estimated_volume += qty
+                        found = True
+
         deviation_estimate = estimated_volume - project_volume if project_volume else Decimal(0)
         deviation_percentage = (deviation_estimate / project_volume * 100) if project_volume > 0 else Decimal(0)
         
+        status = "passed"
+        if abs(deviation_percentage) > 10:
+            status = "failed"
+        elif abs(deviation_percentage) > 0:
+            status = "warning"
+
         match = VolumeProjectMatchModel(
             project_id=estimate.project_id,
             construct_id=wv.construct_id,
@@ -209,16 +248,68 @@ def validate_volume_against_project(estimate_id: int, construct_id: Optional[int
             deviation_estimate=deviation_estimate,
             deviation_actual=(wv.actual_volume - project_volume) if project_volume else None,
             deviation_percentage=deviation_percentage,
-            status="pending"
+            status=status,
+            checked_date=datetime.now()
         )
         db.add(match)
         matches.append(match)
     
+    # 3. Генерация правил валидации (EstimateValidation)
+    
+    # Правило 1: Общее отклонение по объемам
+    total_matches = len(matches)
+    failed_matches = len([m for m in matches if m.status == "failed"])
+    
+    rule_status = ValidationStatus.PASSED
+    if failed_matches > 0:
+        rule_status = ValidationStatus.FAILED
+    elif len([m for m in matches if m.status == "warning"]) > 0:
+        rule_status = ValidationStatus.NEEDS_REVIEW
+        
+    validation_volume = EstimateValidationModel(
+        estimate_id=estimate_id,
+        validation_type="Автоматическая проверка",
+        rule=ValidationRule.VOLUME_MATCH,
+        status=rule_status,
+        description=f"Проверка объемов работ: {total_matches} позиций проверено. {failed_matches} критических отклонений.",
+        checked_date=datetime.now(),
+        is_critical=True
+    )
+    db.add(validation_volume)
+
+    # Правило 2: Сравнение стоимости (если есть данные в ВОР)
+    total_project_cost = sum([wv.planned_amount or 0 for wv in work_volumes])
+    total_estimate_cost = estimate.total_amount or 0
+    
+    if total_project_cost > 0:
+        cost_deviation = total_estimate_cost - total_project_cost
+        cost_deviation_pct = (cost_deviation / total_project_cost * 100)
+        
+        cost_status = ValidationStatus.PASSED
+        if cost_deviation_pct > 5:
+            cost_status = ValidationStatus.FAILED
+        elif cost_deviation_pct > 0:
+            cost_status = ValidationStatus.NEEDS_REVIEW
+            
+        validation_cost = EstimateValidationModel(
+            estimate_id=estimate_id,
+            validation_type="Финансовый контроль",
+            rule=ValidationRule.COST_RANGE,
+            status=cost_status,
+            description="Сравнение сметной стоимости с плановой стоимостью работ по ВОР",
+            expected_value=f"{total_project_cost:.2f}",
+            actual_value=f"{total_estimate_cost:.2f}",
+            deviation_percentage=cost_deviation_pct,
+            checked_date=datetime.now(),
+            is_critical=True
+        )
+        db.add(validation_cost)
+
     db.commit()
-    if matches:
-        db.refresh(matches[0])
-        return matches[0]
-    raise HTTPException(status_code=404, detail="Не найдено объемов для проверки")
+    
+    # Возвращаем список matches, так как response_model=List[VolumeProjectMatch]
+    # Нам нужно перезапросить их, чтобы получить ID, присвоенные БД
+    return matches
 
 
 @router.get("/estimates/{estimate_id}/validations", response_model=List[EstimateValidation])
