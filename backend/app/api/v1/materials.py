@@ -85,7 +85,7 @@ class MaterialMovementBase(BaseModel):
     price: Optional[Decimal] = None
     from_warehouse_id: Optional[int] = None
     to_warehouse_id: Optional[int] = None
-    project_id: Optional[int] = None
+    project_id: int  # Обязательная привязка к объекту (объектно-центрированный подход)
     application_id: Optional[int] = None
     supplier: Optional[str] = None
     batch_number: Optional[str] = None
@@ -235,7 +235,7 @@ def get_movements(
 
 @router.post("/movements/", response_model=MaterialMovement)
 def create_movement(movement: MaterialMovementCreate, db: Session = Depends(get_db)):
-    """Создать движение материалов"""
+    """Создать движение материалов (обязательная привязка к объекту - объектно-центрированный подход)"""
     movement_data = movement.model_dump()
     if movement_data.get("price") and movement_data.get("quantity"):
         movement_data["amount"] = movement_data["price"] * movement_data["quantity"]

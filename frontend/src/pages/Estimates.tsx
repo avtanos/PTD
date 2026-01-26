@@ -183,7 +183,6 @@ const Estimates: React.FC = () => {
         axios.get(`${API_URL}/estimates/`, { params: { estimate_type: filters.estimate_type || undefined } }).catch(() => ({ data: MOCK_ESTIMATES })),
         axios.get(`${API_URL}/projects/`).catch(() => ({ data: [] })),
       ]);
-      setEstimates(Array.isArray(estimatesRes.data) ? estimatesRes.data : MOCK_ESTIMATES);
       
       let projectsData: Project[] = [];
       if (projectsRes.data && projectsRes.data.data && Array.isArray(projectsRes.data.data)) {
@@ -191,10 +190,44 @@ const Estimates: React.FC = () => {
       } else if (Array.isArray(projectsRes.data)) {
         projectsData = projectsRes.data;
       }
+      
+      // Если проекты не загрузились, используем мок-данные
+      if (projectsData.length === 0) {
+        projectsData = [
+          { id: 1, name: 'Жилой дом по ул. Ленина, 10' },
+          { id: 2, name: 'Офисное здание "Бизнес-центр"' },
+        ];
+      }
+      
       setProjects(projectsData);
+      
+      // Связываем проекты со сметами
+      let estimatesData = Array.isArray(estimatesRes.data) ? estimatesRes.data : MOCK_ESTIMATES;
+      estimatesData = estimatesData.map((estimate: Estimate) => {
+        const project = projectsData.find(p => p.id === estimate.project_id);
+        return {
+          ...estimate,
+          project: project ? { id: project.id, name: project.name } : undefined,
+        };
+      });
+      
+      setEstimates(estimatesData);
     } catch (error) {
       console.error('Ошибка загрузки данных:', error);
-      setEstimates(MOCK_ESTIMATES);
+      // Используем мок-данные с проектами
+      const mockProjects: Project[] = [
+        { id: 1, name: 'Жилой дом по ул. Ленина, 10' },
+        { id: 2, name: 'Офисное здание "Бизнес-центр"' },
+      ];
+      setProjects(mockProjects);
+      const estimatesWithProjects = MOCK_ESTIMATES.map((estimate: Estimate) => {
+        const project = mockProjects.find(p => p.id === estimate.project_id);
+        return {
+          ...estimate,
+          project: project ? { id: project.id, name: project.name } : undefined,
+        };
+      });
+      setEstimates(estimatesWithProjects);
     } finally {
       setLoading(false);
     }
@@ -208,7 +241,15 @@ const Estimates: React.FC = () => {
         return { data: estimate || null };
       });
       if (res.data) {
-        setSelectedEstimate(res.data);
+        // Связываем проект со сметой
+        const estimateWithProject = {
+          ...res.data,
+          project: res.data.project || projects.find(p => p.id === res.data.project_id) ? {
+            id: projects.find(p => p.id === res.data.project_id)!.id,
+            name: projects.find(p => p.id === res.data.project_id)!.name,
+          } : undefined,
+        };
+        setSelectedEstimate(estimateWithProject);
       }
     } catch (error) {
       console.error('Ошибка загрузки сметы:', error);
@@ -258,7 +299,15 @@ const Estimates: React.FC = () => {
   };
 
   const handleViewEstimate = (estimate: Estimate) => {
-    setViewingEstimate(estimate);
+    // Убеждаемся, что проект связан со сметой
+    const estimateWithProject = {
+      ...estimate,
+      project: estimate.project || projects.find(p => p.id === estimate.project_id) ? {
+        id: projects.find(p => p.id === estimate.project_id)!.id,
+        name: projects.find(p => p.id === estimate.project_id)!.name,
+      } : undefined,
+    };
+    setViewingEstimate(estimateWithProject);
     setShowViewModal(true);
   };
 

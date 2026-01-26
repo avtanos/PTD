@@ -27,7 +27,8 @@ class Estimate(Base):
     __tablename__ = "estimates"
 
     id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True, comment="Проект (объект)")
+    stage_id = Column(Integer, ForeignKey("project_stages.id"), comment="Этап проекта (опционально, для иерархии)")
     estimate_type = Column(Enum(EstimateType), nullable=False, comment="Тип сметы")
     number = Column(String(100), nullable=False, comment="Номер сметы")
     name = Column(String(500), nullable=False, comment="Наименование сметы")
@@ -51,6 +52,7 @@ class Estimate(Base):
 
     # Relationships
     project = relationship("Project", back_populates="estimates")
+    stage = relationship("ProjectStage", back_populates="estimates")
     base_estimate = relationship("Estimate", remote_side=[id])
     items = relationship("EstimateItem", back_populates="estimate", cascade="all, delete-orphan")
     related_cost_items = relationship("RelatedCost", back_populates="estimate", cascade="all, delete-orphan")

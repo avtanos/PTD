@@ -30,7 +30,16 @@ def get_estimate(estimate_id: int, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=Estimate)
 def create_estimate(estimate: EstimateCreate, db: Session = Depends(get_db)):
-    """Создать новую смету"""
+    """Создать новую смету (объектно-центрированный подход)"""
+    # Валидация: если указан stage_id, проверяем что этап принадлежит проекту
+    if estimate.stage_id:
+        from app.models.project_stage import ProjectStage
+        stage = db.query(ProjectStage).filter(ProjectStage.id == estimate.stage_id).first()
+        if not stage:
+            raise HTTPException(status_code=404, detail="Этап не найден")
+        if stage.project_id != estimate.project_id:
+            raise HTTPException(status_code=400, detail="Этап не принадлежит указанному проекту")
+    
     items_data = estimate.items
     related_costs_data = estimate.related_cost_items
     estimate_data = estimate.model_dump(exclude={"items", "related_cost_items"})

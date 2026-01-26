@@ -49,6 +49,7 @@ class RelatedCost(RelatedCostBase):
 
 class EstimateBase(BaseModel):
     project_id: int
+    stage_id: Optional[int] = None  # Этап проекта (опционально, для иерархии)
     estimate_type: str
     number: str
     name: str
@@ -68,6 +69,7 @@ class EstimateCreate(EstimateBase):
 
 class EstimateUpdate(BaseModel):
     project_id: Optional[int] = None
+    stage_id: Optional[int] = None
     estimate_type: Optional[str] = None
     number: Optional[str] = None
     name: Optional[str] = None

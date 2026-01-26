@@ -795,8 +795,8 @@ const Sales: React.FC = () => {
               <div className="title">Создание коммерческого предложения</div>
               <button onClick={() => setShowProposalModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '24px' }}>×</button>
             </div>
-            <div className="cardBody">
-              <form onSubmit={handleProposalSubmit}>
+            <div className="cardBody" style={{ position: 'relative', overflow: 'visible' }}>
+              <form onSubmit={handleProposalSubmit} style={{ display: 'flex', flexDirection: 'column' }}>
                 <div className="field">
                   <label>Проект *</label>
                   <select value={proposalForm.project_id} onChange={(e) => setProposalForm({...proposalForm, project_id: e.target.value ? parseInt(e.target.value) : ''})} required>
@@ -846,48 +846,53 @@ const Sales: React.FC = () => {
                 </div>
 
                 <div style={{ height: '20px', borderTop: '1px solid var(--line)', margin: '20px 0', paddingTop: '20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <div className="title">Позиции КП</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <div className="title" style={{ fontSize: '16px', fontWeight: 600 }}>Позиции КП</div>
                     <button type="button" className="btn small" onClick={addProposalItem}>+ Добавить позицию</button>
                   </div>
-                  <div className="modal-table-wrapper">
-                    <table>
-                    <thead>
-                      <tr>
-                        <th>Наименование *</th>
-                        <th>Ед.</th>
-                        <th className="tRight">Кол-во</th>
-                        <th className="tRight">Цена *</th>
-                        <th className="tRight">Сумма</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {proposalForm.items.map((item, idx) => (
-                        <tr key={idx}>
-                          <td><input type="text" value={item.work_name} onChange={(e) => updateProposalItem(idx, 'work_name', e.target.value)} required /></td>
-                          <td><input type="text" value={item.unit || ''} onChange={(e) => updateProposalItem(idx, 'unit', e.target.value)} /></td>
-                          <td><input type="number" step="0.01" value={item.quantity || ''} onChange={(e) => updateProposalItem(idx, 'quantity', e.target.value)} /></td>
-                          <td><input type="number" step="0.01" value={item.unit_price || ''} onChange={(e) => updateProposalItem(idx, 'unit_price', e.target.value)} required /></td>
-                          <td className="tRight">{item.amount ? formatCurrencySimple(item.amount, 'KGS') : '0'}</td>
-                          <td><button type="button" className="btn small danger" onClick={() => removeProposalItem(idx)}>Уд.</button></td>
+                  {proposalForm.items.length > 0 && (
+                    <div className="modal-table-wrapper" style={{ marginBottom: '20px', overflowX: 'auto' }}>
+                      <table style={{ width: '100%', fontSize: '13px' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ width: '35%' }}>Наименование *</th>
+                          <th style={{ width: '10%' }}>Ед.</th>
+                          <th style={{ width: '12%' }} className="tRight">Кол-во</th>
+                          <th style={{ width: '15%' }} className="tRight">Цена *</th>
+                          <th style={{ width: '15%' }} className="tRight">Сумма</th>
+                          <th style={{ width: '8%' }}></th>
                         </tr>
-                      ))}
-                    </tbody>
-                    </table>
-                  </div>
+                      </thead>
+                      <tbody>
+                        {proposalForm.items.map((item, idx) => (
+                          <tr key={idx}>
+                            <td><input type="text" style={{ width: '100%', padding: '6px 8px', boxSizing: 'border-box' }} value={item.work_name} onChange={(e) => updateProposalItem(idx, 'work_name', e.target.value)} required /></td>
+                            <td><input type="text" style={{ width: '100%', padding: '6px 8px', boxSizing: 'border-box' }} value={item.unit || ''} onChange={(e) => updateProposalItem(idx, 'unit', e.target.value)} /></td>
+                            <td><input type="number" step="0.01" style={{ width: '100%', padding: '6px 8px', boxSizing: 'border-box', textAlign: 'right' }} value={item.quantity || ''} onChange={(e) => updateProposalItem(idx, 'quantity', e.target.value)} /></td>
+                            <td><input type="number" step="0.01" style={{ width: '100%', padding: '6px 8px', boxSizing: 'border-box', textAlign: 'right' }} value={item.unit_price || ''} onChange={(e) => updateProposalItem(idx, 'unit_price', e.target.value)} required /></td>
+                            <td className="tRight" style={{ padding: '8px' }}>{item.amount ? formatCurrencySimple(item.amount, 'KGS') : '0'}</td>
+                            <td style={{ padding: '4px', textAlign: 'center' }}><button type="button" className="btn small danger" onClick={() => removeProposalItem(idx)} style={{ padding: '4px 8px', fontSize: '12px' }}>×</button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
 
-                <div style={{ padding: '10px', background: 'var(--card)', borderRadius: '12px', marginTop: '20px' }}>
-                  <div style={{ fontSize: '16px', fontWeight: 'bold', textAlign: 'right' }}>
-                    Итого: {formatCurrencySimple(calculateProposalTotal(), 'KGS')} / {formatCurrencySimple(calculateProposalTotal() / 89, 'USD')}
+                {proposalForm.items.length > 0 && (
+                  <div style={{ padding: '12px', background: 'var(--card)', borderRadius: '8px', marginTop: '20px', marginBottom: '20px' }}>
+                    <div style={{ fontSize: '16px', fontWeight: 'bold', textAlign: 'right', color: 'var(--text)' }}>
+                      Итого: {formatCurrencySimple(calculateProposalTotal(), 'KGS')} / {formatCurrencySimple(calculateProposalTotal() / 89, 'USD')}
+                    </div>
                   </div>
-                </div>
+                )}
 
-                <div style={{ height: '16px' }} />
-                <div className="actions">
-                  <button type="submit" className="btn primary">Сохранить</button>
-                  <button type="button" className="btn" onClick={() => setShowProposalModal(false)}>Отмена</button>
+                <div style={{ borderTop: '1px solid var(--line)', paddingTop: '20px', marginTop: '30px', clear: 'both' }}>
+                  <div className="actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', width: '100%' }}>
+                    <button type="submit" className="btn primary">Сохранить</button>
+                    <button type="button" className="btn" onClick={() => setShowProposalModal(false)}>Отмена</button>
+                  </div>
                 </div>
               </form>
             </div>

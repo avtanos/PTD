@@ -36,6 +36,7 @@ class WorkVolumeEntry(WorkVolumeEntryBase):
 
 class WorkVolumeBase(BaseModel):
     project_id: int
+    stage_id: Optional[int] = None  # Этап проекта (опционально, для иерархии)
     construct_id: Optional[int] = None
     work_code: Optional[str] = None
     work_name: str
@@ -102,7 +103,16 @@ def get_work_volume(volume_id: int, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=WorkVolume)
 def create_work_volume(volume: WorkVolumeCreate, db: Session = Depends(get_db)):
-    """Создать запись объемов работ"""
+    """Создать запись объемов работ (объектно-центрированный подход)"""
+    # Валидация: если указан stage_id, проверяем что этап принадлежит проекту
+    if volume.stage_id:
+        from app.models.project_stage import ProjectStage
+        stage = db.query(ProjectStage).filter(ProjectStage.id == volume.stage_id).first()
+        if not stage:
+            raise HTTPException(status_code=404, detail="Этап не найден")
+        if stage.project_id != volume.project_id:
+            raise HTTPException(status_code=400, detail="Этап не принадлежит указанному проекту")
+    
     volume_data = volume.model_dump()
     if volume_data.get("estimated_price") and volume_data.get("planned_volume"):
         volume_data["planned_amount"] = volume_data["estimated_price"] * volume_data["planned_volume"]

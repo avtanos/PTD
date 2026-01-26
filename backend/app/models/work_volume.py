@@ -9,7 +9,8 @@ class WorkVolume(Base):
     __tablename__ = "work_volumes"
 
     id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True, comment="Проект (объект)")
+    stage_id = Column(Integer, ForeignKey("project_stages.id"), comment="Этап проекта (опционально, для иерархии)")
     construct_id = Column(Integer, ForeignKey("object_constructs.id"), comment="Конструктив")
     work_code = Column(String(100), comment="Код работы")
     work_name = Column(String(1000), nullable=False, comment="Наименование работы")
@@ -30,6 +31,7 @@ class WorkVolume(Base):
 
     # Relationships
     project = relationship("Project", back_populates="work_volumes")
+    stage = relationship("ProjectStage", back_populates="work_volumes")
     construct = relationship("ObjectConstruct")
     contractor = relationship("Contractor")
     entries = relationship("WorkVolumeEntry", back_populates="work_volume", cascade="all, delete-orphan")

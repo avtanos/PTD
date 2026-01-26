@@ -5,6 +5,7 @@ from app.db.database import engine, Base
 
 # Импорт моделей для создания таблиц
 from app.models.project import Project
+from app.models.project_stage import ProjectStage
 from app.models.executive_doc import ExecutiveDocument
 from app.models.ks2 import KS2, KS2Item
 from app.models.ks3 import KS3, KS3Item
@@ -50,7 +51,7 @@ app.add_middleware(
 
 # Подключение роутеров
 from app.api.v1 import (
-    projects, executive_docs, ks2, ks3, gpr, ppr,
+    projects, project_stages, executive_docs, ks2, ks3, gpr, ppr,
     applications, contracts, tenders, estimates, invoices,
     departments, object_constructs, standard_rates,
     project_documentation, executive_surveys,
@@ -60,6 +61,7 @@ from app.api.v1 import (
 )
 
 app.include_router(projects.router, prefix="/api/v1/projects", tags=["Проекты"])
+app.include_router(project_stages.router, prefix="/api/v1/project-stages", tags=["Этапы проекта"])
 app.include_router(executive_docs.router, prefix="/api/v1/executive-docs", tags=["Исполнительная документация"])
 app.include_router(ks2.router, prefix="/api/v1/ks2", tags=["КС-2"])
 app.include_router(ks3.router, prefix="/api/v1/ks3", tags=["КС-3"])

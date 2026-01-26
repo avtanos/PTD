@@ -32,6 +32,7 @@ class ObjectConstruct(ObjectConstructBase):
 
 class ProjectConstructBase(BaseModel):
     project_id: int
+    stage_id: Optional[int] = None  # Этап проекта (опционально, для иерархии Объект → Этап → Конструктив)
     construct_id: int
     planned_volume: Optional[str] = None
     notes: Optional[str] = None
@@ -75,7 +76,16 @@ def get_project_constructs(project_id: int, db: Session = Depends(get_db)):
 
 @router.post("/projects/", response_model=ProjectConstruct)
 def create_project_construct(project_construct: ProjectConstructCreate, db: Session = Depends(get_db)):
-    """Добавить конструктив к проекту"""
+    """Добавить конструктив к проекту (объектно-центрированный подход)"""
+    # Валидация: если указан stage_id, проверяем что этап принадлежит проекту
+    if project_construct.stage_id:
+        from app.models.project_stage import ProjectStage
+        stage = db.query(ProjectStage).filter(ProjectStage.id == project_construct.stage_id).first()
+        if not stage:
+            raise HTTPException(status_code=404, detail="Этап не найден")
+        if stage.project_id != project_construct.project_id:
+            raise HTTPException(status_code=400, detail="Этап не принадлежит указанному проекту")
+    
     db_pc = ProjectConstructModel(**project_construct.model_dump())
     db.add(db_pc)
     db.commit()

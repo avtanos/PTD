@@ -26,6 +26,7 @@ class Project(Base):
 
     # Relationships
     department = relationship("Department", back_populates="projects")
+    stages = relationship("ProjectStage", back_populates="project", cascade="all, delete-orphan", order_by="ProjectStage.order_number")
     executive_docs = relationship("ExecutiveDocument", back_populates="project", cascade="all, delete-orphan")
     ks2_forms = relationship("KS2", back_populates="project", cascade="all, delete-orphan")
     ks3_forms = relationship("KS3", back_populates="project", cascade="all, delete-orphan")

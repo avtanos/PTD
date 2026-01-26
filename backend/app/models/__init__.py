@@ -1,5 +1,6 @@
 from app.db.database import Base
 from app.models.project import Project
+from app.models.project_stage import ProjectStage
 from app.models.executive_doc import ExecutiveDocument
 from app.models.ks2 import KS2, KS2Item
 from app.models.ks3 import KS3, KS3Item
@@ -28,6 +29,7 @@ from app.models.sales import SalesProposal, SalesProposalItem, CustomerAgreement
 __all__ = [
     "Base",
     "Project",
+    "ProjectStage",
     "ExecutiveDocument",
     "KS2",
     "KS2Item",

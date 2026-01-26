@@ -22,16 +22,18 @@ class ObjectConstruct(Base):
 
 
 class ProjectConstruct(Base):
-    """Связь проекта с конструктивами"""
+    """Связь проекта с конструктивами через этап (иерархия: Объект → Этап → Конструктив)"""
     __tablename__ = "project_constructs"
 
     id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
-    construct_id = Column(Integer, ForeignKey("object_constructs.id"), nullable=False, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True, comment="Проект (объект)")
+    stage_id = Column(Integer, ForeignKey("project_stages.id"), comment="Этап проекта (опционально, для иерархии)")
+    construct_id = Column(Integer, ForeignKey("object_constructs.id"), nullable=False, index=True, comment="Конструктив")
     planned_volume = Column(String(500), comment="Планируемый объем")
     notes = Column(Text, comment="Примечания")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
     project = relationship("Project", back_populates="constructs")
+    stage = relationship("ProjectStage", back_populates="constructs")
     construct = relationship("ObjectConstruct", back_populates="project_constructs")

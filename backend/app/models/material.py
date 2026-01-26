@@ -106,7 +106,7 @@ class MaterialMovement(Base):
     amount = Column(Numeric(15, 2), comment="Сумма")
     from_warehouse_id = Column(Integer, ForeignKey("warehouses.id"), comment="Склад-отправитель")
     to_warehouse_id = Column(Integer, ForeignKey("warehouses.id"), comment="Склад-получатель")
-    project_id = Column(Integer, ForeignKey("projects.id"), comment="Проект (для перемещений на объект)")
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True, comment="Проект (объект) - обязательная привязка")
     application_id = Column(Integer, ForeignKey("applications.id"), comment="Связанная заявка")
     supplier = Column(String(500), comment="Поставщик")
     batch_number = Column(String(100), comment="Номер партии")
