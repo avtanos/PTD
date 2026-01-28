@@ -15,7 +15,10 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://localhost:3001",
         "http://127.0.0.1:3000",
+        "http://localhost:9999", #
+        "http://127.0.0.1:9999", #
         "http://192.168.1.200:9999", #
+        "http://77.95.56.125:9999", #
         "https://avtanos.github.io",  # GitHub Pages
     ]
     
