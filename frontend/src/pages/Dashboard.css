@@ -1,0 +1,337 @@
+/* Dashboard — Ключевые показатели, Эффективность, Очередь задач ПТО (компактно и адаптивно) */
+
+.dashboardPage {
+  padding: 0 0 1.25rem;
+}
+
+.dashboardSection {
+  margin-bottom: 1.25rem;
+}
+
+.dashboardSectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.dashboardSectionTitle {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.dashboardComplianceBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(110, 168, 254, 0.25);
+  color: var(--accent);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* Карточки ключевых показателей — компактные, адаптивная сетка */
+.dashboardKpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.6rem;
+}
+
+@media (max-width: 900px) {
+  .dashboardKpiGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboardKpiGrid {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+}
+
+.dashboardKpiCard {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  box-shadow: var(--shadow);
+  min-width: 0;
+}
+
+.dashboardKpiCardTitle {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+}
+
+.dashboardKpiCardValue {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.4rem;
+}
+
+.dashboardKpiTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.dashboardKpiTag {
+  display: inline-block;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  border: 1px solid;
+}
+
+.dashboardKpiTag.warn {
+  border-color: var(--warn);
+  color: var(--warn);
+  background: rgba(255, 204, 102, 0.1);
+}
+
+.dashboardKpiTag.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: rgba(255, 107, 107, 0.1);
+}
+
+.dashboardKpiTag.info {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(110, 168, 254, 0.1);
+}
+
+.dashboardKpiTag.ok {
+  border-color: var(--ok);
+  color: var(--ok);
+  background: rgba(74, 222, 128, 0.1);
+}
+
+/* Эффективность — прогресс-бары на всю ширину экрана */
+.dashboardEffectivenessGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .dashboardEffectivenessGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dashboardEffectCard {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r12);
+  padding: 1rem 1.25rem;
+  box-shadow: var(--shadow);
+  min-width: 0;
+}
+
+.dashboardEffectValue {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.dashboardEffectValue.blue { color: var(--accent); }
+.dashboardEffectValue.green { color: var(--ok); }
+.dashboardEffectValue.orange { color: var(--warn); }
+
+.dashboardEffectLabel {
+  font-size: 0.875rem;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+
+.dashboardEffectBar {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--line);
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.dashboardEffectBarFill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.4s ease;
+}
+
+.dashboardEffectBarFill.blue { background: var(--accent); }
+.dashboardEffectBarFill.green { background: var(--ok); }
+.dashboardEffectBarFill.orange { background: var(--warn); }
+
+.dashboardEffectDesc {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* Кнопка Фокус недели */
+.dashboardFocusBtn {
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--warn);
+  color: var(--warn);
+  background: rgba(255, 204, 102, 0.1);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.dashboardFocusBtn:hover {
+  background: rgba(255, 204, 102, 0.2);
+}
+
+/* Таблица очереди задач — компактная, горизонтальный скролл на узких экранах */
+.dashboardTaskCard {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: auto;
+  box-shadow: var(--shadow);
+}
+
+.dashboardTaskTable {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+}
+
+.dashboardTaskTable th {
+  text-align: left;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  white-space: nowrap;
+}
+
+.dashboardTaskTable td {
+  padding: 0.5rem 0.65rem;
+  font-size: 0.8125rem;
+  color: var(--text);
+  border-bottom: 1px solid var(--line);
+}
+
+@media (max-width: 600px) {
+  .dashboardTaskTable th,
+  .dashboardTaskTable td {
+    padding: 0.45rem 0.5rem;
+    font-size: 0.75rem;
+  }
+}
+
+.dashboardTaskTable tbody tr:hover {
+  background: rgba(110, 168, 254, 0.05);
+}
+
+.dashboardTaskTable .typeBadge {
+  display: inline-block;
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  background: rgba(110, 168, 254, 0.2);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.dashboardTaskTable .statusBadge {
+  display: inline-block;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.dashboardTaskTable .statusBadge.warn {
+  border-color: var(--warn);
+  color: var(--warn);
+  background: rgba(255, 204, 102, 0.1);
+}
+
+.dashboardTaskTable .statusBadge.info {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(110, 168, 254, 0.1);
+}
+
+.dashboardTaskTable .statusBadge.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: rgba(255, 107, 107, 0.1);
+}
+
+.dashboardTaskTable .actionLink {
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.8125rem;
+}
+
+.dashboardTaskTable .actionLink:hover {
+  text-decoration: underline;
+}
+
+.dashboardTaskFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.65rem;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.dashboardTaskCount {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.dashboardPagination {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.dashboardPagination button {
+  padding: 0.28rem 0.5rem;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--text);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.dashboardPagination button:hover:not(:disabled) {
+  background: var(--line);
+}
+
+.dashboardPagination button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.dashboardPagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

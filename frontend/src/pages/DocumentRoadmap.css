@@ -799,13 +799,46 @@
   }
 }
 
+/* Печать: только блок дорожной карты, цветной как на экране */
 @media print {
-  .documentRoadmapPage .canvasHead,
-  .documentRoadmapPage .canvasFooter,
+  body {
+    visibility: hidden;
+  }
+  .documentRoadmapPage {
+    visibility: visible !important;
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    min-height: auto !important;
+    height: 100vh !important;
+    padding: 12px !important;
+    margin: 0 !important;
+    background: var(--rm-bg, #0b1020) !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .documentRoadmapPage *,
+  .documentRoadmapPage *::before,
+  .documentRoadmapPage *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  /* Скрыть попап карточки и лишние элементы при печати */
   .documentRoadmapPage .cardPopupOverlay {
     display: none !important;
   }
-  .documentRoadmapPage .viewport {
-    background: #fff;
+  /* Сохранить цвета схемы (не переопределять фон viewport на белый) */
+  .documentRoadmapPage .canvas {
+    background: linear-gradient(180deg, rgba(17,27,59,.70), rgba(17,27,59,.46)) !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .documentRoadmapPage .viewport,
+  .documentRoadmapPage .viewportContainer {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
