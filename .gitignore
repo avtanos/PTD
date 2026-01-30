@@ -45,6 +45,9 @@ yarn-error.log*
 frontend/.pnp
 frontend/.pnp.js
 
+# Uploads (документы дорожной карты и т.п.)
+backend/uploads/
+
 # Database
 *.db
 *.db-shm

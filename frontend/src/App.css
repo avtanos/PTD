@@ -136,6 +136,10 @@ a {
   grid-template-columns: 320px 1fr;
 }
 
+.App.sidebarCollapsed {
+  grid-template-columns: 56px 1fr;
+}
+
 /* Sidebar */
 #navToggle {
   display: none;
@@ -150,9 +154,174 @@ a {
   border-right: 1px solid var(--line);
   backdrop-filter: blur(10px);
   overflow: auto;
-  transition: background-color 0.3s ease, border-color 0.3s ease;
+  transition: width 0.2s ease, padding 0.2s ease, background-color 0.3s ease, border-color 0.3s ease;
   scrollbar-width: thin; /* Firefox */
   scrollbar-color: var(--muted2) transparent; /* Firefox */
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar.collapsed {
+  width: 56px;
+  min-width: 56px;
+  padding: 12px 8px;
+  overflow-x: visible;
+  overflow-y: auto;
+}
+
+.sidebar.collapsed .brandText {
+  display: none;
+}
+
+.sidebar.collapsed .brand {
+  justify-content: center;
+  padding: 8px;
+}
+
+.sidebar.collapsed .brand .logo {
+  margin: 0;
+}
+
+.sidebar.collapsed .navGroup {
+  font-size: 0;
+  line-height: 0;
+  height: 1px;
+  padding: 0;
+  margin: 10px 4px;
+  background: var(--line);
+  overflow: hidden;
+  min-height: 1px;
+}
+
+.sidebar.collapsed .nav {
+  gap: 4px;
+}
+
+.sidebar.collapsed .nav a {
+  justify-content: center;
+  padding: 10px;
+  position: relative;
+}
+
+.sidebar.collapsed .nav a .navLabel,
+.sidebar.collapsed .nav a .meta {
+  display: none;
+}
+
+/* Крупнее иконки в свёрнутом меню */
+.sidebar.collapsed .nav a .ic {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.sidebar.collapsed .brand .ic {
+  width: 24px;
+  height: 24px;
+}
+
+/* Тултип при наведении на иконку в свёрнутом меню (появление в 2 раза быстрее) */
+.sidebar.collapsed .nav a::after {
+  content: attr(data-label);
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 8px;
+  padding: 8px 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--text);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.075s ease;
+  z-index: 100;
+  box-shadow: var(--shadow);
+}
+
+[data-theme="light"] .sidebar.collapsed .nav a::after {
+  background: #ffffff;
+  border-color: #dee2e6;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.sidebar.collapsed .nav a:hover::after {
+  opacity: 1;
+}
+
+.sidebar .sidebarToggle {
+  margin-top: auto;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 10px;
+  margin-top: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+[data-theme="dark"] .sidebar .sidebarToggle {
+  background: rgba(17, 27, 59, 0.75);
+  border-color: rgba(36, 48, 95, 0.85);
+}
+
+[data-theme="light"] .sidebar .sidebarToggle {
+  background: #f8f9fa;
+  border-color: #dee2e6;
+}
+
+.sidebar .sidebarToggle:hover {
+  border-color: rgba(110, 168, 254, 0.55);
+}
+
+.sidebar .sidebarToggle .ic {
+  width: 20px;
+  height: 20px;
+}
+
+/* Стиль кнопки как на макете: только стрелка, без фона и рамки */
+.sidebar.collapsed .sidebarToggle {
+  padding: 12px;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text);
+}
+
+[data-theme="dark"] .sidebar.collapsed .sidebarToggle {
+  background: transparent;
+  border: none;
+  color: rgba(233, 237, 255, 0.95);
+}
+
+[data-theme="light"] .sidebar.collapsed .sidebarToggle {
+  background: transparent;
+  border: none;
+  color: #495057;
+}
+
+.sidebar.collapsed .sidebarToggle:hover {
+  background: rgba(110, 168, 254, 0.12);
+  color: var(--text);
+}
+
+[data-theme="light"] .sidebar.collapsed .sidebarToggle:hover {
+  background: rgba(13, 110, 253, 0.08);
+  color: #1a1f2e;
+}
+
+.sidebar.collapsed .sidebarToggle .ic {
+  width: 24px;
+  height: 24px;
 }
 
 [data-theme="dark"] .sidebar {
@@ -1270,7 +1439,8 @@ tr:hover td {
 }
 
 @media (max-width: 980px) {
-  .App {
+  .App,
+  .App.sidebarCollapsed {
     grid-template-columns: 1fr;
   }
 
@@ -1282,6 +1452,11 @@ tr:hover td {
     transition: 0.18s ease;
     width: 320px;
     z-index: 30;
+  }
+
+  .sidebar.collapsed {
+    width: 56px;
+    min-width: 56px;
   }
 
   #navToggle:checked ~ .sidebar {

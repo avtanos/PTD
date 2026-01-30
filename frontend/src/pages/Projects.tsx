@@ -539,7 +539,7 @@ const Projects: React.FC = () => {
                 <tr style={{ display: 'table-row' }}>
                   <th style={{ width: '10%', padding: '12px', textAlign: 'left', color: 'var(--text)', fontWeight: 600, background: 'var(--panel)', borderBottom: '2px solid var(--line)', display: 'table-cell' }}>Код</th>
                   <th style={{ padding: '12px', textAlign: 'left', color: 'var(--text)', fontWeight: 600, background: 'var(--panel)', borderBottom: '2px solid var(--line)', display: 'table-cell' }}>Проект</th>
-                  <th style={{ width: '18%', padding: '12px', textAlign: 'left', color: 'var(--text)', fontWeight: 600, background: 'var(--panel)', borderBottom: '2px solid var(--line)', display: 'table-cell' }}>Заказчик</th>
+                  <th style={{ width: '18%', padding: '12px', textAlign: 'left', color: 'var(--text)', fontWeight: 600, background: 'var(--panel)', borderBottom: '2px solid var(--line)', display: 'table-cell' }}>Заказчик/инициатор</th>
                   <th style={{ width: '14%', padding: '12px', textAlign: 'left', color: 'var(--text)', fontWeight: 600, background: 'var(--panel)', borderBottom: '2px solid var(--line)', display: 'table-cell' }}>Подразделение</th>
                   <th style={{ width: '12%', padding: '12px', textAlign: 'left', color: 'var(--text)', fontWeight: 600, background: 'var(--panel)', borderBottom: '2px solid var(--line)', display: 'table-cell' }}>Вид работ</th>
                   <th style={{ width: '12%', padding: '12px', textAlign: 'left', color: 'var(--text)', fontWeight: 600, background: 'var(--panel)', borderBottom: '2px solid var(--line)', display: 'table-cell' }}>Статус</th>
@@ -671,7 +671,7 @@ const Projects: React.FC = () => {
                 <div style={{ height: '10px' }} />
 
                 <div className="field">
-                  <label>Заказчик</label>
+                  <label>Заказчик/инициатор</label>
                   <input type="text" name="customer" value={formData.customer} onChange={handleInputChange} disabled={saving} />
                   {errors.customer && <span className="mini" style={{ color: 'var(--danger)' }}>{errors.customer}</span>}
                 </div>
@@ -679,7 +679,7 @@ const Projects: React.FC = () => {
                 <div style={{ height: '10px' }} />
 
                 <div className="field">
-                  <label>Подрядчик</label>
+                  <label>Ответственный подрядчик</label>
                   <input type="text" name="contractor" value={formData.contractor} onChange={handleInputChange} disabled={saving} />
                   {errors.contractor && <span className="mini" style={{ color: 'var(--danger)' }}>{errors.contractor}</span>}
                 </div>

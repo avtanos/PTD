@@ -1,0 +1,811 @@
+/* Дорожная карта — стили по макету интерактивной схемы */
+.documentRoadmapPage {
+  --rm-bg: #0b1020;
+  --rm-panel: #0f1731;
+  --rm-card: #111b3b;
+  --rm-line: #24305f;
+  --rm-text: #e9edff;
+  --rm-muted: #aab4e6;
+  --rm-muted2: #7f8ac4;
+  --rm-accent: #6ea8fe;
+  --rm-ok: #4ade80;
+  --rm-warn: #ffcc66;
+  --rm-danger: #ff6b6b;
+  --rm-info: #38bdf8;
+  --rm-shadow: 0 18px 50px rgba(0,0,0,.38);
+  --rm-r20: 20px;
+  height: calc(100vh - 60px);
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(8px, 1vw, 14px);
+  overflow: hidden;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+}
+
+.documentRoadmapPage .canvas {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: linear-gradient(180deg, rgba(17,27,59,.70), rgba(17,27,59,.46));
+  border: 1px solid rgba(36,48,95,.85);
+  border-radius: var(--rm-r20);
+  box-shadow: var(--rm-shadow);
+  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+}
+
+.documentRoadmapPage .canvasHead {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 1vw, 12px);
+  padding: clamp(6px, 1vw, 12px) clamp(8px, 1.2vw, 14px);
+  border-bottom: 1px solid rgba(36,48,95,.75);
+  background: rgba(15,23,49,.45);
+  flex-shrink: 0;
+}
+
+.documentRoadmapPage .canvasHeadRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(6px, 1vw, 16px);
+  flex-wrap: wrap;
+  row-gap: clamp(6px, 1vw, 10px);
+}
+
+.documentRoadmapPage .canvasHeadRow .t {
+  font-weight: 950;
+  font-size: clamp(12px, 1.4vw, 16px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1 1 auto;
+  color: var(--rm-text);
+}
+
+.documentRoadmapPage .canvasHeadRow .seg {
+  display: flex;
+  gap: clamp(4px, 0.6vw, 8px);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.documentRoadmapPage .canvasHeadRow .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: clamp(5px, 0.7vw, 8px) clamp(6px, 0.9vw, 10px);
+  font-size: clamp(10px, 1.1vw, 12px);
+  min-height: clamp(32px, 8vw, 40px);
+  box-sizing: border-box;
+  border-radius: 999px;
+  border: 1px solid rgba(36,48,95,.82);
+  background: rgba(17,27,59,.42);
+  color: var(--rm-muted);
+  cursor: pointer;
+  user-select: none;
+  transition: 0.15s ease;
+}
+
+.documentRoadmapPage .canvasHeadRow .chip .dot {
+  width: clamp(6px, 1.5vw, 9px);
+  height: clamp(6px, 1.5vw, 9px);
+  flex-shrink: 0;
+  border-radius: 99px;
+  background: rgba(170,180,230,.65);
+}
+
+.documentRoadmapPage .canvasHeadRow .chip.ok .dot { background: var(--rm-ok); }
+.documentRoadmapPage .canvasHeadRow .chip.warn .dot { background: var(--rm-warn); }
+.documentRoadmapPage .canvasHeadRow .chip.danger .dot { background: var(--rm-danger); }
+.documentRoadmapPage .canvasHeadRow .chip.info .dot { background: var(--rm-info); }
+.documentRoadmapPage .canvasHeadRow .chip.notstarted .dot { background: #94a3b8; }
+.documentRoadmapPage .canvasHeadRow .chip:hover { border-color: rgba(110,168,254,.6); }
+.documentRoadmapPage .canvasHeadRow .chip.active { border-color: var(--rm-accent); background: rgba(110,168,254,.2); }
+
+.documentRoadmapPage .zoomPills {
+  display: flex;
+  gap: clamp(4px, 0.6vw, 8px);
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.documentRoadmapPage .pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: clamp(4px, 0.6vw, 7px) clamp(6px, 0.9vw, 10px);
+  font-size: clamp(10px, 1.1vw, 12px);
+  border-radius: 999px;
+  background: rgba(17,27,59,.45);
+  border: 1px solid rgba(36,48,95,.85);
+  color: var(--rm-muted);
+  user-select: none;
+}
+
+.documentRoadmapPage .pill b { color: var(--rm-text); }
+
+.documentRoadmapPage .projectSelectHead {
+  padding: 8px 12px;
+  min-width: 200px;
+  max-width: 420px;
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--rm-text);
+  background: rgba(17, 27, 59, 0.55);
+  border: 1px solid rgba(36, 48, 95, 0.85);
+  border-radius: 8px;
+  outline: none;
+  cursor: pointer;
+  appearance: auto;
+}
+
+.documentRoadmapPage .projectSelectHead:hover,
+.documentRoadmapPage .projectSelectHead:focus {
+  border-color: rgba(110, 168, 254, 0.6);
+}
+
+.documentRoadmapPage .projectSelectHead option {
+  background: var(--rm-panel);
+  color: var(--rm-text);
+}
+
+.documentRoadmapPage .viewportContainer {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.documentRoadmapPage .viewport {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(800px 480px at 15% 20%, rgba(110,168,254,.10), transparent 60%),
+    radial-gradient(800px 480px at 90% 70%, rgba(74,222,128,.08), transparent 60%),
+    rgba(0,0,0,.08);
+}
+
+.documentRoadmapPage .viewport > div {
+  width: 100%;
+  height: 100%;
+  min-height: 280px;
+}
+
+.documentRoadmapPage .canvasFooter {
+  flex-shrink: 0;
+  padding: 6px 10px 8px;
+  border-top: 1px solid rgba(36,48,95,.5);
+  background: rgba(15,23,49,.35);
+}
+
+.documentRoadmapPage .canvasFooterFilters {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px 10px;
+  row-gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-height: 36px;
+}
+
+.documentRoadmapPage .canvasFooterFilters .groupTitle {
+  margin: 0;
+  padding: 0;
+  border: none;
+  font-size: 10px;
+  color: var(--rm-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.documentRoadmapPage .canvasFooterFilters .field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.documentRoadmapPage .canvasFooterFilters .field {
+  flex-direction: row;
+}
+
+.documentRoadmapPage .canvasFooterFilters .field label {
+  order: 1;
+}
+
+.documentRoadmapPage .canvasFooterFilters .field input,
+.documentRoadmapPage .canvasFooterFilters .field select {
+  order: 2;
+}
+
+.documentRoadmapPage .canvasFooterFilters .field label {
+  margin: 0;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--rm-muted2);
+  flex-shrink: 0;
+}
+
+.documentRoadmapPage .canvasFooterFilters input[type="text"],
+.documentRoadmapPage .canvasFooterFilters select {
+  padding: 5px 8px;
+  min-width: 0;
+  width: auto;
+  max-width: 100%;
+  font-size: 12px;
+  min-height: 28px;
+  height: 28px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  border: 1px solid rgba(36,48,95,.85);
+  background: rgba(15,23,49,.55);
+  color: var(--rm-text);
+  outline: none;
+}
+
+.documentRoadmapPage .canvasFooterFilters input[type="text"] {
+  min-width: 140px;
+  width: 220px;
+}
+
+.documentRoadmapPage .canvasFooterFilters select {
+  min-width: 100px;
+  width: 140px;
+  max-width: 160px;
+}
+
+.documentRoadmapPage .canvasFooterFilters .btnRow {
+  margin: 0;
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.documentRoadmapPage .canvasFooterFilters .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px 8px;
+  font-size: 11px;
+  min-height: 28px;
+  height: 28px;
+  white-space: nowrap;
+  border-radius: 8px;
+  border: 1px solid rgba(36,48,95,.85);
+  background: rgba(15,23,49,.45);
+  color: var(--rm-text);
+  cursor: pointer;
+  user-select: none;
+  transition: 0.16s ease;
+  flex-shrink: 0;
+}
+
+.documentRoadmapPage .canvasFooterFilters .btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(110,168,254,.55);
+}
+
+.documentRoadmapPage .canvasFooterFilters .btn.primary {
+  border-color: rgba(110,168,254,.6);
+  background: linear-gradient(135deg, rgba(110,168,254,.22), rgba(110,168,254,.08));
+}
+
+.documentRoadmapPage .canvasFooterFilters .btn.ghost {
+  background: transparent;
+}
+
+.documentRoadmapPage .canvasFooterFilters .hint {
+  margin: 0;
+  font-size: 10px;
+  color: var(--rm-muted2);
+  line-height: 1.2;
+  white-space: nowrap;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.documentRoadmapPage .canvasFooterFilters .footerLeft {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px 10px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.documentRoadmapPage .canvasFooterFilters .footerRightGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px 12px;
+  margin-left: auto;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.documentRoadmapPage .canvasFooterFilters .footerRight {
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.documentRoadmapPage .canvasFooterFilters .footerRightGroup .zoomPills {
+  margin-left: 0;
+}
+
+.documentRoadmapPage .canvasFooterFilters .footerRight .btn {
+  padding: 5px 10px;
+  font-size: 11px;
+}
+
+/* Карточка блока (всплывающее окно) */
+.documentRoadmapPage .cardPopupOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: cardPopupFadeIn 0.2s ease;
+}
+
+.documentRoadmapPage .cardPopupOverlay.isOpen {
+  display: flex;
+}
+
+@keyframes cardPopupFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.documentRoadmapPage .cardPopup {
+  background: linear-gradient(180deg, rgba(15,23,49,.96), rgba(15,23,49,.9));
+  border: 1px solid rgba(36,48,95,.9);
+  border-radius: var(--rm-r20);
+  box-shadow: var(--rm-shadow), 0 24px 60px rgba(0,0,0,.4);
+  overflow: hidden;
+  max-width: 420px;
+  width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  animation: cardPopupSlideIn 0.22s ease;
+}
+
+@keyframes cardPopupSlideIn {
+  from { opacity: 0; transform: scale(0.96) translateY(-8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.documentRoadmapPage .cardPopupHead {
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid rgba(36,48,95,.75);
+  background: rgba(17,27,59,.44);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.documentRoadmapPage .cardPopupHead .t {
+  font-weight: 950;
+  font-size: 14px;
+  color: var(--rm-text);
+}
+
+.documentRoadmapPage .cardPopupClose {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  border: 1px solid rgba(36,48,95,.85);
+  background: rgba(15,23,49,.45);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  color: var(--rm-muted);
+  font-size: 18px;
+  line-height: 1;
+  transition: 0.15s ease;
+}
+
+.documentRoadmapPage .cardPopupClose:hover {
+  border-color: rgba(110,168,254,.55);
+  color: var(--rm-text);
+}
+
+.documentRoadmapPage .cardPopupBody {
+  padding: 12px 14px 14px;
+  overflow: auto;
+  color: var(--rm-text);
+}
+
+.documentRoadmapPage .kv {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 10px 12px;
+  align-items: start;
+  font-size: 13px;
+}
+
+.documentRoadmapPage .kv .k { color: var(--rm-muted2); font-size: 12px; }
+.documentRoadmapPage .kv .v { color: var(--rm-text); }
+
+.documentRoadmapPage .divider {
+  height: 1px;
+  background: rgba(36,48,95,.65);
+  margin: 12px 0;
+}
+
+.documentRoadmapPage .listMini {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.documentRoadmapPage .miniItem {
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(36,48,95,.85);
+  background: rgba(17,27,59,.30);
+  cursor: pointer;
+  transition: 0.15s ease;
+}
+
+.documentRoadmapPage .miniItem:hover {
+  transform: translateY(-1px);
+  border-color: rgba(110,168,254,.55);
+}
+
+.documentRoadmapPage .miniItem b { font-size: 13px; }
+.documentRoadmapPage .miniItem p { margin: 4px 0 0; color: var(--rm-muted); font-size: 12px; line-height: 1.35; }
+
+.documentRoadmapPage .cardPopupWhy .groupTitle {
+  margin: 0 0 8px;
+  padding: 0;
+  border: none;
+  font-size: 12px;
+  color: var(--rm-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.documentRoadmapPage .warnBox {
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,204,102,.40);
+  background: rgba(255,204,102,.10);
+  color: #ffe6b3;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.documentRoadmapPage .cardPopupActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.documentRoadmapPage .cardFileList {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  font-size: 12px;
+}
+
+.documentRoadmapPage .cardFileItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(17,27,59,.4);
+  margin-bottom: 4px;
+}
+
+.documentRoadmapPage .cardFileItem a {
+  color: var(--rm-accent);
+  text-decoration: none;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.documentRoadmapPage .cardFileItem a:hover {
+  text-decoration: underline;
+}
+
+.documentRoadmapPage .cardUpload {
+  margin-top: 6px;
+}
+
+.documentRoadmapPage .cardPopupBody .field {
+  margin-bottom: 10px;
+}
+
+.documentRoadmapPage .cardPopupBody .field label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  color: var(--rm-muted2);
+}
+
+.documentRoadmapPage .cardPopupBody .field input,
+.documentRoadmapPage .cardPopupBody .field select,
+.documentRoadmapPage .cardPopupBody .field textarea {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(36,48,95,.85);
+  background: rgba(17,27,59,.55);
+  color: var(--rm-text);
+  box-sizing: border-box;
+}
+
+.documentRoadmapPage .cardPopup.editModal {
+  max-width: 420px;
+}
+
+.documentRoadmapPage .muted {
+  margin: 0;
+  font-size: 12px;
+  color: var(--rm-muted2);
+}
+
+/* Планшеты и узкие экраны */
+@media (max-width: 980px) {
+  .documentRoadmapPage {
+    padding: clamp(6px, 1.5vw, 10px);
+    min-height: 320px;
+  }
+  .documentRoadmapPage .canvasHead {
+    padding: 10px 12px;
+  }
+  .documentRoadmapPage .canvasFooter {
+    padding: 10px 12px;
+  }
+  .documentRoadmapPage .canvasFooterFilters {
+    gap: 8px 10px;
+  }
+}
+
+/* Планшет портрет / большой телефон */
+@media (max-width: 768px) {
+  .documentRoadmapPage {
+    height: calc(100vh - 56px);
+    min-height: 300px;
+    padding: 6px 8px;
+  }
+  .documentRoadmapPage .canvasHead {
+    padding: 8px 10px;
+  }
+  .documentRoadmapPage .canvasHeadRow {
+    gap: 8px;
+    row-gap: 8px;
+  }
+  .documentRoadmapPage .canvasHeadRow .t {
+    flex: 1 1 100%;
+    font-size: clamp(13px, 4vw, 15px);
+    order: 1;
+  }
+  .documentRoadmapPage .canvasHeadRow .seg {
+    flex: 1 1 100%;
+    order: 2;
+    justify-content: flex-start;
+  }
+  .documentRoadmapPage .canvasHeadRow .zoomPills {
+    width: 100%;
+    order: 3;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  .documentRoadmapPage .canvasHeadRow .chip {
+    padding: 6px 8px;
+    font-size: 11px;
+    min-height: 36px;
+  }
+  .documentRoadmapPage .canvasHeadRow .chip .dot {
+    width: 7px;
+    height: 7px;
+  }
+  .documentRoadmapPage .pill {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+  .documentRoadmapPage .canvasFooter {
+    padding: 8px 10px;
+  }
+  .documentRoadmapPage .canvasFooterFilters {
+    gap: 8px 10px;
+    row-gap: 10px;
+  }
+  .documentRoadmapPage .canvasFooterFilters .field {
+    flex: 1 1 auto;
+    min-width: min(140px, 45%);
+  }
+  .documentRoadmapPage .canvasFooterFilters input[type="text"] {
+    min-width: min(90px, 22vw);
+  }
+  .documentRoadmapPage .canvasFooterFilters select {
+    max-width: min(180px, 50vw);
+  }
+  .documentRoadmapPage .canvasFooterFilters .hint {
+    flex: 1 1 100%;
+    font-size: 11px;
+  }
+  .documentRoadmapPage .canvasFooterFilters .footerRight {
+    flex-basis: 100%;
+    margin-left: 0;
+    margin-top: 4px;
+  }
+  .documentRoadmapPage .canvasFooterFilters .footerRight .btn {
+    width: 100%;
+  }
+  .documentRoadmapPage .viewport > div {
+    min-height: 240px;
+  }
+  .documentRoadmapPage .cardPopupOverlay {
+    padding: 12px;
+  }
+  .documentRoadmapPage .cardPopup {
+    max-width: calc(100% - 24px);
+  }
+}
+
+/* Телефон */
+@media (max-width: 600px) {
+  .documentRoadmapPage {
+    padding: 6px;
+    min-height: 280px;
+  }
+  .documentRoadmapPage .canvas {
+    border-radius: 14px;
+  }
+  .documentRoadmapPage .canvasHead {
+    padding: 8px 10px;
+  }
+  .documentRoadmapPage .canvasHeadRow .t {
+    font-size: 13px;
+  }
+  .documentRoadmapPage .canvasHeadRow .chip {
+    padding: 5px 7px;
+    font-size: 10px;
+    min-height: 34px;
+  }
+  .documentRoadmapPage .canvasHeadRow .chip .dot {
+    width: 6px;
+    height: 6px;
+  }
+  .documentRoadmapPage .pill {
+    font-size: 10px;
+    padding: 5px 7px;
+  }
+  .documentRoadmapPage .canvasFooter {
+    padding: 8px 10px;
+  }
+  .documentRoadmapPage .canvasFooterFilters {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .documentRoadmapPage .canvasFooterFilters .field {
+    flex: 1 1 100%;
+    min-width: 0;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .documentRoadmapPage .canvasFooterFilters .field label {
+    flex: 0 0 auto;
+    min-width: 60px;
+  }
+  .documentRoadmapPage .canvasFooterFilters input[type="text"],
+  .documentRoadmapPage .canvasFooterFilters select {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
+    max-width: none;
+    min-height: 36px;
+    font-size: 12px;
+  }
+  .documentRoadmapPage .canvasFooterFilters .btnRow {
+    width: 100%;
+    gap: 8px;
+  }
+  .documentRoadmapPage .canvasFooterFilters .btn {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    min-height: 36px;
+  }
+  .documentRoadmapPage .canvasFooterFilters .hint {
+    font-size: 10px;
+  }
+  .documentRoadmapPage .canvasFooterFilters .footerRight .btn {
+    width: 100%;
+  }
+  .documentRoadmapPage .viewport > div {
+    min-height: 200px;
+  }
+  .documentRoadmapPage .cardPopup {
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: 14px;
+  }
+  .documentRoadmapPage .cardPopupHead .t {
+    font-size: 13px;
+  }
+  .documentRoadmapPage .kv {
+    grid-template-columns: 90px 1fr;
+    font-size: 12px;
+  }
+  .documentRoadmapPage .miniItem b {
+    font-size: 12px;
+  }
+  .documentRoadmapPage .miniItem p {
+    font-size: 11px;
+  }
+}
+
+/* Маленький телефон */
+@media (max-width: 380px) {
+  .documentRoadmapPage {
+    padding: 4px;
+    min-height: 260px;
+  }
+  .documentRoadmapPage .canvasHeadRow .chip {
+    padding: 4px 6px;
+    font-size: 9px;
+    min-height: 32px;
+  }
+  .documentRoadmapPage .canvasHeadRow .chip .dot {
+    width: 5px;
+    height: 5px;
+  }
+  .documentRoadmapPage .canvasFooterFilters .btn {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+  .documentRoadmapPage .viewport > div {
+    min-height: 180px;
+  }
+}
+
+@media print {
+  .documentRoadmapPage .canvasHead,
+  .documentRoadmapPage .canvasFooter,
+  .documentRoadmapPage .cardPopupOverlay {
+    display: none !important;
+  }
+  .documentRoadmapPage .viewport {
+    background: #fff;
+  }
+}

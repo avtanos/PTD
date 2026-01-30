@@ -25,6 +25,7 @@ from app.models.estimate_validation import EstimateValidation, VolumeProjectMatc
 from app.models.user import User, Permission, UserPermission
 from app.models.receivables import Receivable, ReceivablePayment, ReceivableNotification, CollectionAction
 from app.models.sales import SalesProposal, SalesProposalItem, CustomerAgreement
+from app.models.document_roadmap import DocumentRoadmapSection, DocumentSectionStatus, DocumentFile, ExecutionStatus, DocumentStatus
 
 __all__ = [
     "Base",
@@ -85,4 +86,12 @@ __all__ = [
     "SalesProposal",
     "SalesProposalItem",
     "CustomerAgreement",
+    "DocumentRoadmapSection",
+    "DocumentSectionStatus",
+    "DocumentFile",
+    "ExecutionStatus",
+    "DocumentStatus",
+    "DocumentNotification",
+    "NotificationType",
+    "NotificationChannel",
 ]

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import API_URL from '../utils/api';
 import { normalizeToArray } from '../utils/normalizeData';
+import { mockProjects, getMockProjectDocumentation } from '../mocks/data';
 
 interface ProjectDocumentation {
   id: number;
@@ -93,8 +94,8 @@ const ProjectDocumentation: React.FC = () => {
     } catch (error: any) {
       console.error('Ошибка загрузки данных:', error);
       setError(error.response?.data?.detail || error.message || 'Ошибка загрузки данных');
-      setDocs([]);
-      setProjects([]);
+      setDocs(getMockProjectDocumentation());
+      setProjects(mockProjects.map((p) => ({ id: p.id, name: p.name, code: p.code })));
     } finally {
       setLoading(false);
     }

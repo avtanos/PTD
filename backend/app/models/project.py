@@ -49,3 +49,4 @@ class Project(Base):
     receivables = relationship("Receivable", back_populates="project", cascade="all, delete-orphan")
     sales_proposals = relationship("SalesProposal", back_populates="project", cascade="all, delete-orphan")
     customer_agreements = relationship("CustomerAgreement", back_populates="project", cascade="all, delete-orphan")
+    document_roadmap_statuses = relationship("DocumentSectionStatus", back_populates="project", cascade="all, delete-orphan")

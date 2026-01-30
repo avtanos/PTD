@@ -4,6 +4,7 @@ import './App.css';
 
 // Import all pages
 import Dashboard from './pages/Dashboard';
+import DocumentRoadmap from './pages/DocumentRoadmap';
 import Projects from './pages/Projects';
 import ExecutiveDocs from './pages/ExecutiveDocs';
 import KS2 from './pages/KS2';
@@ -40,10 +41,18 @@ const App: React.FC = () => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState<string>('dashboard');
   const [navOpen, setNavOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('sidebarCollapsed');
+    return saved === 'true';
+  });
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('theme');
     return (saved === 'light' || saved === 'dark') ? saved : 'dark';
   });
+
+  useEffect(() => {
+    localStorage.setItem('sidebarCollapsed', String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
 
   useEffect(() => {
     // Поддержка как HashRouter, так и BrowserRouter
@@ -71,6 +80,7 @@ const App: React.FC = () => {
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard': return <Dashboard />;
+      case 'roadmap': return <DocumentRoadmap />;
       case 'projects': return <Projects />;
       case 'execdocs': return <ExecutiveDocs />;
       case 'ks2': return <KS2 />;
@@ -110,15 +120,17 @@ const App: React.FC = () => {
         handleNavClick(to);
       }}
       className={currentPage === to ? 'active' : ''}
+      title={typeof children === 'string' ? children : undefined}
+      data-label={typeof children === 'string' ? children : undefined}
     >
       <svg className="ic" viewBox="0 0 24 24"><path d={icon} /></svg>
-      {children}
+      <span className="navLabel">{children}</span>
       {meta && <span className="meta">{meta}</span>}
     </a>
   );
 
   return (
-    <div className="App">
+    <div className={`App ${sidebarCollapsed ? 'sidebarCollapsed' : ''}`}>
       <input
         type="checkbox"
         id="navToggle"
@@ -130,20 +142,20 @@ const App: React.FC = () => {
         <label className="overlay" onClick={() => setNavOpen(false)} aria-label="Закрыть меню" />
       )}
 
-      <aside className="sidebar">
+      <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="brand">
           <div className="logo">
             <svg className="ic" viewBox="0 0 24 24"><path d="M4 21V3h10v6h6v12H4Zm2-2h6v-2H6v2Zm0-4h6v-2H6v2Zm0-4h6V9H6v2Zm0-4h6V5H6v2Zm10 12h2v-2h-2v2Zm0-4h2v-2h-2v2Zm0-4h2V9h-2v2Z" /></svg>
           </div>
-          <div>
+          <div className="brandText">
             <div className="title">Управление строительством</div>
             <div className="sub">ПТО • Сметы • Договоры • ТМЦ • 1С</div>
           </div>
         </div>
-          
         <div className="navGroup">Обзор</div>
         <nav className="nav">
           <NavLink to="dashboard" icon="M3 13h8V3H3v10Zm0 8h8v-6H3v6Zm10 0h8V11h-8v10Zm0-18v6h8V3h-8Z">Дашборд</NavLink>
+          <NavLink to="roadmap" icon="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z">Дорожная карта</NavLink>
         </nav>
 
         <div className="navGroup">Проекты и документы</div>
@@ -200,46 +212,59 @@ const App: React.FC = () => {
           <NavLink to="integration1c" icon="M19.14 12.94a7.49 7.49 0 0 0 .05-.94 7.49 7.49 0 0 0-.05-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.28 7.28 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 1h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.58.23-1.12.54-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 7.48a.5.5 0 0 0 .12.64l2.03 1.58c-.03.31-.05.63-.05.94 0 .31.02.63.05.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.3.6.22l2.39-.96c.5.4 1.05.71 1.63.94l.36 2.54c.04.24.25.42.49.42h3.8c.24 0 .45-.18.49-.42l.36-2.54c.58-.23 1.12-.54 1.63-.94l2.39.96c.22.09.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5Z">Интеграция с 1С</NavLink>
         </nav>
 
+        <button
+          type="button"
+          className="sidebarToggle"
+          onClick={() => setSidebarCollapsed((c) => !c)}
+          title={sidebarCollapsed ? 'Развернуть меню' : 'Свернуть меню'}
+          aria-label={sidebarCollapsed ? 'Развернуть меню' : 'Свернуть меню'}
+        >
+          <svg className="ic" viewBox="0 0 24 24" style={{ transform: sidebarCollapsed ? 'rotate(180deg)' : undefined }}>
+            <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
+          </svg>
+        </button>
       </aside>
 
       <main className="main">
-        <div className="topbar">
-          <label className="burger" onClick={() => setNavOpen(true)} aria-label="Открыть меню">
-            <svg className="ic" viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2Zm0-5h18v-2H3v2Zm0-7v2h18V6H3Z" /></svg>
-          </label>
+        {currentPage !== 'roadmap' && (
+          <div className="topbar">
+            <label className="burger" onClick={() => setNavOpen(true)} aria-label="Открыть меню">
+              <svg className="ic" viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2Zm0-5h18v-2H3v2Zm0-7v2h18V6H3Z" /></svg>
+            </label>
 
-          <div className="globalSearch" role="search">
-            <svg className="ic" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79L20 21.49 21.49 20 15.5 14Zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14Z" /></svg>
-            <input 
-              type="text" 
-              placeholder="Глобальный поиск (Ctrl+K)..." 
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                   alert(`Поиск по запросу "${e.currentTarget.value}" в разработке`);
-                }
-              }}
-            />
-          </div>
+            <div className="globalSearch" role="search">
+              <svg className="ic" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79L20 21.49 21.49 20 15.5 14Zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14Z" /></svg>
+              <input 
+                type="text" 
+                placeholder="Глобальный поиск (Ctrl+K)..." 
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                     alert(`Поиск по запросу "${e.currentTarget.value}" в разработке`);
+                  }
+                }}
+              />
+            </div>
 
-          <div className="pill">
-            <span className="dot"></span> Статус: <b>Онлайн</b>
+            <div className="pill">
+              <span className="dot"></span> Статус: <b>Онлайн</b>
+            </div>
+            <div className="pill">Роль: <b>Инженер ПТО</b></div>
+            <button className="btn small" onClick={toggleTheme} title={theme === 'dark' ? 'Переключить на светлую тему' : 'Переключить на темную тему'}>
+              <svg className="ic" viewBox="0 0 24 24">
+                {theme === 'dark' ? (
+                  <path d="M12 9c1.65 0 3 1.35 3 3s-1.35 3-3 3-3-1.35-3-3 1.35-3 3-3zm0-2c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0 .39-.39.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z" />
+                ) : (
+                  <path d="M12.34 2.02C6.59 1.82 2 6.42 2 12c0 5.52 4.48 10 10 10 3.71 0 6.93-2.02 8.66-5.02-7.51-.25-13.1-6.66-8.32-14.96z" />
+                )}
+              </svg>
+              {theme === 'dark' ? 'Светлая' : 'Темная'}
+            </button>
+            <a className="btn small" href="#profile" onClick={(e) => { e.preventDefault(); handleNavClick('profile'); }} title="Профиль и доступы">
+              <svg className="ic" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4Zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4Z" /></svg>
+              Кабинет
+            </a>
           </div>
-          <div className="pill">Роль: <b>Инженер ПТО</b></div>
-          <button className="btn small" onClick={toggleTheme} title={theme === 'dark' ? 'Переключить на светлую тему' : 'Переключить на темную тему'}>
-            <svg className="ic" viewBox="0 0 24 24">
-              {theme === 'dark' ? (
-                <path d="M12 9c1.65 0 3 1.35 3 3s-1.35 3-3 3-3-1.35-3-3 1.35-3 3-3zm0-2c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0 .39-.39.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z" />
-              ) : (
-                <path d="M12.34 2.02C6.59 1.82 2 6.42 2 12c0 5.52 4.48 10 10 10 3.71 0 6.93-2.02 8.66-5.02-7.51-.25-13.1-6.66-8.32-14.96z" />
-              )}
-            </svg>
-            {theme === 'dark' ? 'Светлая' : 'Темная'}
-          </button>
-          <a className="btn small" href="#profile" onClick={(e) => { e.preventDefault(); handleNavClick('profile'); }} title="Профиль и доступы">
-            <svg className="ic" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4Zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4Z" /></svg>
-            Кабинет
-          </a>
-        </div>
+        )}
 
         <section className="pages">
            {/* <div className={`${currentPage === 'dashboard' ? 'active' : ''}`}> */}
