@@ -23,6 +23,7 @@ class ExecutiveSurvey(Base):
     number = Column(String(100), comment="Номер съемки")
     survey_date = Column(Date, nullable=False, comment="Дата съемки")
     surveyor = Column(String(200), comment="Геодезист")
+    surveyor_personnel_id = Column(Integer, ForeignKey("personnel.id"), comment="Сотрудник-геодезист")
     department = Column(String(200), comment="Подразделение (геодезия)")
     description = Column(Text, comment="Описание работ")
     coordinates = Column(Text, comment="Координаты/отметки")
@@ -35,3 +36,4 @@ class ExecutiveSurvey(Base):
 
     # Relationships
     project = relationship("Project", back_populates="executive_surveys")
+    surveyor_personnel = relationship("Personnel", foreign_keys=[surveyor_personnel_id])

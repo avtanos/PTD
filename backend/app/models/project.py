@@ -50,3 +50,4 @@ class Project(Base):
     sales_proposals = relationship("SalesProposal", back_populates="project", cascade="all, delete-orphan")
     customer_agreements = relationship("CustomerAgreement", back_populates="project", cascade="all, delete-orphan")
     document_roadmap_statuses = relationship("DocumentSectionStatus", back_populates="project", cascade="all, delete-orphan")
+    project_personnel = relationship("ProjectPersonnel", back_populates="project", cascade="all, delete-orphan")

@@ -41,6 +41,7 @@ class ApplicationBase(BaseModel):
     number: str
     date: date
     requested_by: Optional[str] = None
+    requested_by_personnel_id: Optional[int] = None
     department: Optional[str] = None
     status: str = "draft"  # draft, submitted, in_process, approved, rejected, completed
     description: Optional[str] = None
@@ -58,6 +59,7 @@ class ApplicationUpdate(BaseModel):
     number: Optional[str] = None
     date: Optional[date] = None
     requested_by: Optional[str] = None
+    requested_by_personnel_id: Optional[int] = None
     department: Optional[str] = None
     status: Optional[str] = None
     description: Optional[str] = None

@@ -46,6 +46,7 @@ class User(Base):
     # Relationships
     department = relationship("Department", back_populates="users")
     permissions = relationship("UserPermission", back_populates="user", cascade="all, delete-orphan")
+    personnel = relationship("Personnel", back_populates="user", foreign_keys="Personnel.user_id", uselist=False)
 
 
 class Permission(Base):

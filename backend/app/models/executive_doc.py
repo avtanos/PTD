@@ -38,6 +38,7 @@ class ExecutiveDocument(Base):
     description = Column(Text, comment="Описание")
     file_path = Column(String(1000), comment="Путь к файлу")
     created_by = Column(String(200), comment="Создал")
+    created_by_personnel_id = Column(Integer, ForeignKey("personnel.id"), comment="Сотрудник-создатель")
     approved_by = Column(String(200), comment="Утвердил")
     status = Column(String(50), default="draft", comment="Статус (draft, in_work, in_review, approved, signed, rejected)")
     department = Column(String(200), comment="Подразделение (геодезия)")
@@ -47,4 +48,5 @@ class ExecutiveDocument(Base):
 
     # Relationships
     project = relationship("Project", back_populates="executive_docs")
+    created_by_personnel = relationship("Personnel", foreign_keys=[created_by_personnel_id])
     ks2 = relationship("KS2", foreign_keys=[ks2_id])

@@ -2,9 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, and_, func
 from typing import List, Optional, Dict, Any
+from pydantic import BaseModel
 from app.db.database import get_db
 from app.models.project import Project
 from app.models.department import Department
+from app.models.personnel import Personnel as PersonnelModel, ProjectPersonnel, ProjectPersonnelRole
 from app.schemas.project import ProjectCreate, ProjectUpdate, Project as ProjectSchema, DepartmentInfo
 from app.schemas.common import PaginationMeta
 
@@ -326,3 +328,101 @@ def delete_project(project_id: int, db: Session = Depends(get_db)):
     db.delete(db_project)
     db.commit()
     return {"message": "Проект удален"}
+
+
+# === Персонал проекта (интеграция с модулем кадров) ===
+@router.get("/{project_id}/personnel")
+def get_project_personnel(project_id: int, db: Session = Depends(get_db)):
+    """Получить назначенный персонал на проект"""
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Проект не найден")
+    assignments = db.query(ProjectPersonnel).filter(ProjectPersonnel.project_id == project_id).all()
+    result = []
+    for a in assignments:
+        p = a.personnel
+        dept = p.department if p and p.department else None
+        result.append({
+            "id": a.id,
+            "personnel_id": a.personnel_id,
+            "personnel": {
+                "id": p.id,
+                "full_name": p.full_name,
+                "position": p.position,
+                "department": {"id": dept.id, "name": dept.name} if dept else None
+            } if p else None,
+            "role": a.role,
+            "date_from": a.date_from,
+            "date_to": a.date_to,
+            "is_main": a.is_main,
+            "notes": a.notes
+        })
+    return result
+
+
+class AddPersonnelToProjectBody(BaseModel):
+    personnel_id: int
+    role: str = "other"
+    date_from: Optional[str] = None
+    is_main: bool = False
+    notes: Optional[str] = None
+
+
+@router.post("/{project_id}/personnel")
+def add_personnel_to_project(
+    project_id: int,
+    body: AddPersonnelToProjectBody,
+    db: Session = Depends(get_db)
+):
+    """Добавить сотрудника на проект"""
+    from datetime import date
+    personnel_id = body.personnel_id
+    role = body.role
+    date_from = body.date_from
+    is_main = body.is_main
+    notes = body.notes
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Проект не найден")
+    personnel = db.query(PersonnelModel).filter(PersonnelModel.id == personnel_id).first()
+    if not personnel:
+        raise HTTPException(status_code=404, detail="Сотрудник не найден")
+    existing = db.query(ProjectPersonnel).filter(
+        ProjectPersonnel.project_id == project_id,
+        ProjectPersonnel.personnel_id == personnel_id
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Сотрудник уже назначен на этот проект")
+    assignment = ProjectPersonnel(
+        project_id=project_id,
+        personnel_id=personnel_id,
+        role=role,
+        date_from=date.fromisoformat(date_from) if date_from else date.today(),
+        is_main=is_main,
+        notes=notes
+    )
+    db.add(assignment)
+    db.commit()
+    db.refresh(assignment)
+    return {
+        "id": assignment.id,
+        "personnel_id": assignment.personnel_id,
+        "role": assignment.role,
+        "date_from": assignment.date_from,
+        "date_to": assignment.date_to,
+        "is_main": assignment.is_main
+    }
+
+
+@router.delete("/{project_id}/personnel/{assignment_id}")
+def remove_personnel_from_project(project_id: int, assignment_id: int, db: Session = Depends(get_db)):
+    """Снять сотрудника с проекта"""
+    a = db.query(ProjectPersonnel).filter(
+        ProjectPersonnel.id == assignment_id,
+        ProjectPersonnel.project_id == project_id
+    ).first()
+    if not a:
+        raise HTTPException(status_code=404, detail="Назначение не найдено")
+    db.delete(a)
+    db.commit()
+    return {"message": "Сотрудник снят с проекта"}

@@ -15,6 +15,7 @@ class GPR(Base):
     start_date = Column(Date, nullable=False, comment="Дата начала")
     end_date = Column(Date, nullable=False, comment="Дата окончания")
     created_by = Column(String(200), comment="Создал")
+    created_by_personnel_id = Column(Integer, ForeignKey("personnel.id"), comment="Сотрудник-создатель")
     approved_by = Column(String(200), comment="Утвердил")
     status = Column(String(50), default="draft", comment="Статус (draft, approved, active)")
     description = Column(Text, comment="Описание")
@@ -23,6 +24,7 @@ class GPR(Base):
 
     # Relationships
     project = relationship("Project", back_populates="gprs")
+    created_by_personnel = relationship("Personnel", foreign_keys=[created_by_personnel_id])
     tasks = relationship("GPRTask", back_populates="gpr", cascade="all, delete-orphan", order_by="GPRTask.start_date")
 
 
@@ -35,6 +37,7 @@ class GPRTask(Base):
     name = Column(String(500), nullable=False, comment="Наименование работы")
     work_type = Column(String(200), comment="Вид работ")
     responsible = Column(String(200), comment="Ответственный")
+    responsible_personnel_id = Column(Integer, ForeignKey("personnel.id"), comment="Ответственный сотрудник")
     start_date = Column(Date, nullable=False, comment="Дата начала")
     end_date = Column(Date, nullable=False, comment="Дата окончания")
     planned_duration = Column(Integer, comment="Планируемая длительность (дни)")
@@ -49,3 +52,4 @@ class GPRTask(Base):
 
     # Relationships
     gpr = relationship("GPR", back_populates="tasks")
+    responsible_personnel = relationship("Personnel", foreign_keys=[responsible_personnel_id])

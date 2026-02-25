@@ -33,6 +33,7 @@ class Application(Base):
     number = Column(String(100), nullable=False, comment="Номер заявки")
     date = Column(Date, nullable=False, comment="Дата заявки")
     requested_by = Column(String(200), comment="Подал заявку")
+    requested_by_personnel_id = Column(Integer, ForeignKey("personnel.id"), comment="Сотрудник, подавший заявку")
     department = Column(String(200), comment="Подразделение")
     status = Column(String(50), default="draft", comment="Статус заявки")
     description = Column(Text, comment="Описание/обоснование")
@@ -46,6 +47,7 @@ class Application(Base):
 
     # Relationships
     project = relationship("Project", back_populates="applications")
+    requested_by_personnel = relationship("Personnel", foreign_keys=[requested_by_personnel_id])
     items = relationship("ApplicationItem", back_populates="application", cascade="all, delete-orphan")
     workflow = relationship("ApplicationWorkflow", back_populates="application", cascade="all, delete-orphan", order_by="ApplicationWorkflow.order_number")
 

@@ -30,6 +30,7 @@ import DocumentVersions from './pages/DocumentVersions';
 import Integration1C from './pages/Integration1C';
 import Validation from './pages/Validation';
 import Users from './pages/Users';
+import Personnel from './pages/Personnel';
 import Receivables from './pages/Receivables';
 import Profile from './pages/Profile';
 import Sales from './pages/Sales';
@@ -105,6 +106,7 @@ const App: React.FC = () => {
       case 'integration1c': return <Integration1C />;
       case 'validation': return <Validation />;
       case 'users': return <Users />;
+      case 'personnel': return <Personnel />;
       case 'receivables': return <Receivables />;
       case 'sales': return <Sales />;
       case 'profile': return <Profile />;
@@ -145,11 +147,11 @@ const App: React.FC = () => {
       <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="brand">
           <div className="logo">
-            <svg className="ic" viewBox="0 0 24 24"><path d="M4 21V3h10v6h6v12H4Zm2-2h6v-2H6v2Zm0-4h6v-2H6v2Zm0-4h6V9H6v2Zm0-4h6V5H6v2Zm10 12h2v-2h-2v2Zm0-4h2v-2h-2v2Zm0-4h2V9h-2v2Z" /></svg>
+            <img src={`${process.env.PUBLIC_URL || ''}/logo.png`} alt="OpenCM" className="logoImg" />
           </div>
           <div className="brandText">
-            <div className="title">Управление строительством</div>
-            <div className="sub">ПТО • Сметы • Договоры • ТМЦ • 1С</div>
+            <div className="title brandTitleOpenCM"><span className="brandOpen">Open</span><span className="brandCM">CM</span></div>
+            <div className="sub">Управление строительством</div>
           </div>
         </div>
         <div className="navGroup">Обзор</div>
@@ -207,6 +209,7 @@ const App: React.FC = () => {
         <div className="navGroup">Администрирование</div>
         <nav className="nav">
           <NavLink to="users" icon="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3ZM8 11c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13Zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h7v-2.5c0-2.33-4.67-3.5-7-3.5Z">Пользователи и роли</NavLink>
+          <NavLink to="personnel" icon="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3ZM8 11c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13Zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h7v-2.5c0-2.33-4.67-3.5-7-3.5Z">Кадры</NavLink>
           <NavLink to="workflow" icon="M10 17h4v-2h-4v2Zm-7 4h18v-2H3v2ZM3 3v2h18V3H3Zm0 6v2h18V9H3Z">Workflow заявок</NavLink>
           <NavLink to="docversions" icon="M12 8V4l8 8h-4v4l-8-8h4Z">Версии документов</NavLink>
           <NavLink to="integration1c" icon="M19.14 12.94a7.49 7.49 0 0 0 .05-.94 7.49 7.49 0 0 0-.05-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.28 7.28 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 1h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.58.23-1.12.54-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 7.48a.5.5 0 0 0 .12.64l2.03 1.58c-.03.31-.05.63-.05.94 0 .31.02.63.05.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.3.6.22l2.39-.96c.5.4 1.05.71 1.63.94l.36 2.54c.04.24.25.42.49.42h3.8c.24 0 .45-.18.49-.42l.36-2.54c.58-.23 1.12-.54 1.63-.94l2.39.96c.22.09.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5Z">Интеграция с 1С</NavLink>

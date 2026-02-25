@@ -23,20 +23,20 @@
 }
 
 [data-theme="light"] {
-  /* Light theme */
-  --bg: #f8f9fa;
+  /* Light theme — цвета OpenCM (синий, зелёный, жёлтый) */
+  --bg: #f8fafc;
   --panel: #ffffff;
   --card: #ffffff;
-  --card2: #f8f9fa;
-  --text: #1a1f2e;
-  --muted: #6c757d;
-  --muted2: #adb5bd;
-  --line: #dee2e6;
-  --accent: #0d6efd;
-  --accent2: #198754;
-  --warn: #ffc107;
-  --danger: #dc3545;
-  --ok: #198754;
+  --card2: #f1f5f9;
+  --text: #1e293b;
+  --muted: #64748b;
+  --muted2: #94a3b8;
+  --line: #e2e8f0;
+  --accent: #2563eb;
+  --accent2: #16a34a;
+  --warn: #eab308;
+  --danger: #dc2626;
+  --ok: #16a34a;
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
@@ -119,9 +119,9 @@ body {
 
 [data-theme="light"] body {
   background:
-    radial-gradient(900px 600px at 12% 10%, rgba(13, 110, 253, 0.06), transparent 60%),
-    radial-gradient(900px 600px at 90% 30%, rgba(25, 135, 84, 0.05), transparent 55%),
-    radial-gradient(900px 600px at 60% 90%, rgba(255, 193, 7, 0.04), transparent 55%),
+    radial-gradient(900px 600px at 12% 10%, rgba(37, 99, 235, 0.07), transparent 60%),
+    radial-gradient(900px 600px at 90% 30%, rgba(22, 163, 74, 0.06), transparent 55%),
+    radial-gradient(900px 600px at 60% 90%, rgba(234, 179, 8, 0.05), transparent 55%),
     var(--bg);
 }
 
@@ -349,24 +349,53 @@ a {
 }
 
 [data-theme="light"] .brand {
-  background: linear-gradient(135deg, rgba(13, 110, 253, 0.1), rgba(13, 110, 253, 0.05));
-  border-color: rgba(13, 110, 253, 0.2);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(22, 163, 74, 0.06));
+  border-color: rgba(37, 99, 235, 0.25);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .brand .logo {
-  width: 38px;
-  height: 38px;
+  width: 42px;
+  height: 42px;
   border-radius: 12px;
   display: grid;
   place-items: center;
   background: rgba(110, 168, 254, 0.18);
   border: 1px solid rgba(110, 168, 254, 0.28);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.brand .logo .logoImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .brand .title {
   font-weight: 700;
   line-height: 1.1;
+}
+
+.brand .brandTitleOpenCM {
+  font-size: 1.1em;
+  letter-spacing: -0.02em;
+}
+
+.brand .brandOpen {
+  color: #2563eb;
+}
+
+.brand .brandCM {
+  color: #16a34a;
+}
+
+[data-theme="light"] .brand .brandOpen {
+  color: #2563eb;
+}
+
+[data-theme="light"] .brand .brandCM {
+  color: #16a34a;
 }
 
 .brand .sub {
@@ -423,13 +452,13 @@ a {
 }
 
 [data-theme="light"] .btn.primary {
-  background: linear-gradient(135deg, rgba(13, 110, 253, 0.15), rgba(13, 110, 253, 0.08));
-  border-color: rgba(13, 110, 253, 0.4);
-  color: #0d6efd;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.15), rgba(37, 99, 235, 0.08));
+  border-color: rgba(37, 99, 235, 0.4);
+  color: #2563eb;
 }
 
 [data-theme="light"] .btn.primary:hover {
-  background: linear-gradient(135deg, rgba(13, 110, 253, 0.2), rgba(13, 110, 253, 0.12));
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(37, 99, 235, 0.12));
   border-color: rgba(13, 110, 253, 0.5);
 }
 
@@ -534,8 +563,8 @@ a {
 }
 
 [data-theme="light"] .nav a.active {
-  background: linear-gradient(135deg, rgba(13, 110, 253, 0.15), rgba(13, 110, 253, 0.05));
-  border-color: rgba(13, 110, 253, 0.4);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.15), rgba(37, 99, 235, 0.05));
+  border-color: rgba(37, 99, 235, 0.4);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
