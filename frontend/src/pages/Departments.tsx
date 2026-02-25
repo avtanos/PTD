@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import API_URL from '../utils/api';
+import './Pages.css';
 
 interface Department {
   id: number;
@@ -196,11 +197,20 @@ const Departments: React.FC = () => {
         </div>
 
         {showModal && (
-          <div className="card">
-            <div className="cardHead">
-              <div className="title">{editingDept ? 'Редактирование' : 'Создание'} подразделения</div>
-            </div>
-            <div className="cardBody">
+          <div className="modal-overlay" onClick={() => { setShowModal(false); setEditingDept(null); }}>
+            <div className="modal-content modal-small" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>{editingDept ? 'Редактирование' : 'Создание'} подразделения</h2>
+                <button
+                  type="button"
+                  className="modal-close"
+                  onClick={() => { setShowModal(false); setEditingDept(null); }}
+                  aria-label="Закрыть"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="modal-body">
               <form onSubmit={handleSubmit}>
                 <div className="field">
                   <label>Родительское подразделение</label>
@@ -266,6 +276,7 @@ const Departments: React.FC = () => {
                   <button type="button" className="btn" onClick={() => { setShowModal(false); setEditingDept(null); }}>Отмена</button>
                 </div>
               </form>
+            </div>
             </div>
           </div>
         )}

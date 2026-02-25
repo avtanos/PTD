@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import API_URL from '../utils/api';
+import './Pages.css';
 
 interface Department {
   id: number;
@@ -403,9 +404,9 @@ const Personnel: React.FC = () => {
 
         {showModal && (
           <div className="modal-overlay" onClick={() => { setShowModal(false); setEditing(null); }}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-              <div className="cardHead" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-                <div className="title">{editing ? 'Редактирование' : 'Добавление'} сотрудника</div>
+            <div className="modal-content modal-large" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>{editing ? 'Редактирование' : 'Добавление'} сотрудника</h2>
                 <button type="button" className="modal-close" onClick={() => { setShowModal(false); setEditing(null); }} aria-label="Закрыть">×</button>
               </div>
               {editing && (
@@ -457,7 +458,7 @@ const Personnel: React.FC = () => {
                 </button>
               </div>
             )}
-            <div className="cardBody" style={{ overflow: 'auto', flex: 1, minHeight: 0 }}>
+            <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
               {modalTab === 'main' && (
                 <form onSubmit={handleSubmit}>
                   <div className="field">
@@ -701,9 +702,9 @@ const Personnel: React.FC = () => {
 
         {viewing && (
           <div className="modal-overlay" onClick={() => setViewing(null)}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-              <div className="cardHead" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-                <div className="title">Просмотр сотрудника</div>
+            <div className="modal-content modal-large" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>Просмотр сотрудника</h2>
                 <button type="button" className="modal-close" onClick={() => setViewing(null)} aria-label="Закрыть">×</button>
               </div>
             <div style={{ display: 'flex', gap: '0', borderBottom: '1px solid var(--border)', padding: '0 16px' }}>
@@ -753,7 +754,7 @@ const Personnel: React.FC = () => {
                 История
               </button>
             </div>
-            <div className="cardBody" style={{ overflow: 'auto', flex: 1, minHeight: 0 }}>
+            <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
               {viewTab === 'main' && (
                 <div>
                   <div className="field">
