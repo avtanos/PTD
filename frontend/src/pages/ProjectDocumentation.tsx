@@ -160,9 +160,6 @@ const ProjectDocumentation: React.FC = () => {
           <div className="h1">Разрешительные документы</div>
           <p className="h2">Документы, загруженные в блоки дорожной карты документов.</p>
         </div>
-        <div className="actions">
-          <a className="btn primary" href="#roadmap">Дорожная карта документов</a>
-        </div>
       </div>
 
       <div className="grid">
