@@ -163,7 +163,7 @@ const App: React.FC = () => {
         <div className="navGroup">Проекты и документы</div>
         <nav className="nav">
           <NavLink to="projects" icon="M10 4H4v6h6V4Zm10 0h-6v6h6V4ZM10 14H4v6h6v-6Zm10 0h-6v6h6v-6Z">Проекты</NavLink>
-          <NavLink to="projdocs" icon="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6Zm1 7V3.5L19.5 9H15ZM8 13h8v-2H8v2Zm0 4h8v-2H8v2Z">Проектная документация</NavLink>
+          <NavLink to="projdocs" icon="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6Zm1 7V3.5L19.5 9H15ZM8 13h8v-2H8v2Zm0 4h8v-2H8v2Z">Разрешительные документы</NavLink>
           <NavLink to="execdocs" icon="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6Zm1 7V3.5L19.5 9H15ZM8 13h8v-2H8v2Zm0 4h8v-2H8v2Z">Исполнительная документация</NavLink>
           <NavLink to="surveys" icon="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7Zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5Z">Исполнительные съемки</NavLink>
           <NavLink to="changes" icon="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2Zm-5 14H7v-2h7v2Zm3-4H7v-2h10v2Zm0-4H7V7h10v2Z">Изменения проекта</NavLink>

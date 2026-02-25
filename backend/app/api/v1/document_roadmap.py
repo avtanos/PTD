@@ -4,6 +4,7 @@ from sqlalchemy import and_, or_
 from typing import List, Optional
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from urllib.parse import quote
 import os
 import shutil
 from app.db.database import get_db
@@ -95,6 +96,24 @@ class FileInfo(BaseModel):
     uploaded_by: Optional[str] = None
     uploaded_at: datetime
     description: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class RoadmapFileRow(BaseModel):
+    """Файл дорожной карты с контекстом проекта и секции (для раздела «Разрешительные документы»)"""
+    id: int
+    file_name: str
+    file_size: Optional[int] = None
+    mime_type: str
+    uploaded_at: datetime
+    description: Optional[str] = None
+    status_id: int
+    project_id: int
+    project_name: str
+    section_code: str
+    section_name: str
 
     class Config:
         from_attributes = True
@@ -309,6 +328,44 @@ def get_section(section_code: str, db: Session = Depends(get_db)):
     if not section:
         raise HTTPException(status_code=404, detail="Секция не найдена")
     return section
+
+
+@router.get("/all-files", response_model=List[RoadmapFileRow])
+def get_all_roadmap_files(
+    project_id: Optional[int] = None,
+    section_code: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Список всех файлов, загруженных в блоки дорожной карты (для раздела «Разрешительные документы»)."""
+    query = (
+        db.query(FileModel, StatusModel, SectionModel, Project)
+        .join(StatusModel, FileModel.status_id == StatusModel.id)
+        .join(SectionModel, StatusModel.section_id == SectionModel.id)
+        .join(Project, StatusModel.project_id == Project.id)
+        .filter(FileModel.is_active == True)
+    )
+    if project_id is not None:
+        query = query.filter(StatusModel.project_id == project_id)
+    if section_code is not None:
+        query = query.filter(StatusModel.section_code == section_code)
+    rows = query.order_by(FileModel.uploaded_at.desc()).all()
+
+    return [
+        RoadmapFileRow(
+            id=f.id,
+            file_name=f.file_name,
+            file_size=f.file_size,
+            mime_type=f.mime_type or "",
+            uploaded_at=f.uploaded_at,
+            description=f.description,
+            status_id=st.id,
+            project_id=st.project_id,
+            project_name=proj.name or "",
+            section_code=st.section_code,
+            section_name=sec.name or "",
+        )
+        for f, st, sec, proj in rows
+    ]
 
 
 @router.post("/projects/{project_id}/init-statuses", response_model=List[Status])
@@ -648,9 +705,29 @@ def delete_file(file_id: int, db: Session = Depends(get_db)):
     return {"message": "Файл удален"}
 
 
+@router.get("/files/{file_id}/view")
+async def view_file(file_id: int, db: Session = Depends(get_db)):
+    """Открыть файл для просмотра в браузере (Content-Disposition: inline, например PDF во вкладке)."""
+    from fastapi.responses import FileResponse
+    
+    file = db.query(FileModel).filter(FileModel.id == file_id).first()
+    if not file:
+        raise HTTPException(status_code=404, detail="Файл не найден")
+    
+    file_path = Path(file.stored_path)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Файл не найден на диске")
+
+    return FileResponse(
+        path=str(file_path),
+        media_type=file.mime_type or "application/octet-stream",
+        headers={"Content-Disposition": f"inline; filename*=UTF-8''{quote(file.file_name, safe='')}"}
+    )
+
+
 @router.get("/files/{file_id}/download")
 async def download_file(file_id: int, db: Session = Depends(get_db)):
-    """Скачать файл"""
+    """Скачать файл (Content-Disposition: attachment)."""
     from fastapi.responses import FileResponse
     
     file = db.query(FileModel).filter(FileModel.id == file_id).first()
