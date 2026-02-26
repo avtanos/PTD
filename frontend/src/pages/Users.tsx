@@ -38,6 +38,14 @@ interface PersonnelItem {
   department_id?: number;
 }
 
+interface RoleItem {
+  id: number;
+  code: string;
+  name: string;
+  description?: string | null;
+  is_active?: boolean;
+}
+
 const Users: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
@@ -65,9 +73,14 @@ const Users: React.FC = () => {
     personnel_id: '' as number | '',
   });
   const [rolePermissions, setRolePermissions] = useState<Record<string, number[]>>({});
-  const [roleEditPermission, setRoleEditPermission] = useState<Permission | null>(null);
-  const [roleEditSelectedRoles, setRoleEditSelectedRoles] = useState<string[]>([]);
+  const [rolesList, setRolesList] = useState<RoleItem[]>([]);
+  const [roleEditRole, setRoleEditRole] = useState<string | null>(null);
+  const [roleEditSelectedPermissions, setRoleEditSelectedPermissions] = useState<number[]>([]);
   const [roleEditSearch, setRoleEditSearch] = useState('');
+  const [showAddRoleModal, setShowAddRoleModal] = useState(false);
+  const [addRoleCode, setAddRoleCode] = useState('');
+  const [addRoleName, setAddRoleName] = useState('');
+  const [addRoleError, setAddRoleError] = useState<string | null>(null);
 
   const fetchRolePermissions = async (permData: Permission[]) => {
     try {
@@ -87,49 +100,36 @@ const Users: React.FC = () => {
     setRolePermissions({});
   };
 
-  const toggleRolePermission = async (role: string, permissionId: number, checked: boolean) => {
-    setRolePermissions((prev) => {
-      const current = prev[role] || [];
-      const exists = current.includes(permissionId);
-      let next = current;
-      if (checked && !exists) {
-        next = [...current, permissionId];
-      } else if (!checked && exists) {
-        next = current.filter((id) => id !== permissionId);
-      }
-      return { ...prev, [role]: next };
+  const saveRolePermissionsForRole = async (role: string, permissionIds: number[]) => {
+    await axios.put(`${API_URL}/roles/${role}/permissions`, {
+      role,
+      permission_ids: permissionIds,
     });
-    try {
-      const current = rolePermissions[role] || [];
-      const base = new Set(current);
-      if (checked) {
-        base.add(permissionId);
-      } else {
-        base.delete(permissionId);
-      }
-      await axios.put(`${API_URL}/roles/${role}/permissions`, {
-        role,
-        permission_ids: Array.from(base),
-      });
-      // После успешного сохранения перезагружаем матрицу, чтобы не расходиться с бэкендом
-      await fetchRolePermissions(permissions);
-    } catch (error) {
-      console.error('Ошибка сохранения прав роли:', error);
-    }
+    await fetchRolePermissions(permissions);
   };
 
   useEffect(() => {
     fetchData();
   }, []);
 
+  const fetchRoles = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/roles/`);
+      setRolesList(Array.isArray(res.data) ? res.data : []);
+    } catch {
+      setRolesList([]);
+    }
+  };
+
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [usersRes, permRes, depRes, personnelRes] = await Promise.all([
+      const [usersRes, permRes, depRes, personnelRes, rolesRes] = await Promise.all([
         axios.get(`${API_URL}/users/`),
         axios.get(`${API_URL}/permissions/`),
         axios.get(`${API_URL}/departments/`),
         axios.get(`${API_URL}/personnel/`, { params: { limit: 500 } }),
+        axios.get(`${API_URL}/roles/`),
       ]);
       const usersData = Array.isArray(usersRes.data) && usersRes.data.length > 0 ? usersRes.data : mockUsers;
       const permData = Array.isArray(permRes.data) && permRes.data.length > 0 ? permRes.data : mockPermissions;
@@ -141,6 +141,7 @@ const Users: React.FC = () => {
       if (Array.isArray(personnelRes.data)) {
         setPersonnelList(personnelRes.data);
       }
+      setRolesList(Array.isArray(rolesRes.data) ? rolesRes.data : []);
       await fetchRolePermissions(permData);
     } catch (error) {
       console.error('Ошибка загрузки данных пользователей/прав:', error);
@@ -263,6 +264,11 @@ const Users: React.FC = () => {
     accountant: 'Бухгалтер',
     debt_collector: 'Отдел дебиторки',
   };
+  const roleLabelsCombined: Record<string, string> = { ...roleLabels };
+  rolesList.forEach((r) => { roleLabelsCombined[r.code] = r.name; });
+  const allRoles = rolesList.length > 0
+    ? rolesList.map((r) => [r.code, r.name] as [string, string])
+    : Object.entries(roleLabels);
 
   const filteredUsers = users.filter(u => {
     if (filters.role && u.role !== filters.role) return false;
@@ -273,18 +279,17 @@ const Users: React.FC = () => {
     return true;
   });
 
-  const filteredPermissions = permissions.filter(p => {
-    if (filters.search) {
-      const search = filters.search.toLowerCase();
-      if (!p.code.toLowerCase().includes(search) && !p.name.toLowerCase().includes(search)) return false;
-    }
-    return true;
-  });
+  const filteredPermissions = permissions; // используется в модалке, фильтрация ниже по поиску
 
   const paginatedUsers = filteredUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  const paginatedPermissions = filteredPermissions.slice((permissionPage - 1) * pageSize, permissionPage * pageSize);
+  const filteredRoles = allRoles.filter(([, label]) => {
+    if (!filters.search) return true;
+    const search = filters.search.toLowerCase();
+    return label.toLowerCase().includes(search);
+  });
+  const paginatedRoles = filteredRoles.slice((permissionPage - 1) * pageSize, permissionPage * pageSize);
   const totalUserPages = Math.ceil(filteredUsers.length / pageSize);
-  const totalPermissionPages = Math.ceil(filteredPermissions.length / pageSize);
+  const totalPermissionPages = Math.ceil(filteredRoles.length / pageSize);
 
   return (
     <>
@@ -294,7 +299,7 @@ const Users: React.FC = () => {
           <div className="h1">Пользователи и роли</div>
           <p className="h2">Список пользователей • назначение ролей и прав доступа • связь с подразделениями.</p>
         </div>
-        <div className="actions">
+        <div className="actions" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <a
             className="btn primary"
             href="#users"
@@ -305,6 +310,18 @@ const Users: React.FC = () => {
           >
             + Добавить пользователя
           </a>
+          <button
+            type="button"
+            className="btn primary"
+            onClick={() => {
+              setShowAddRoleModal(true);
+              setAddRoleCode('');
+              setAddRoleName('');
+              setAddRoleError(null);
+            }}
+          >
+            + Добавить роль
+          </button>
         </div>
       </div>
 
@@ -333,7 +350,7 @@ const Users: React.FC = () => {
                     <label>Роль</label>
                     <select value={filters.role} onChange={(e) => setFilters({...filters, role: e.target.value})}>
                       <option value="">Все</option>
-                      {Object.keys(roleLabels).map(role => <option key={role} value={role}>{roleLabels[role]}</option>)}
+                      {Object.keys(roleLabelsCombined).map(role => <option key={role} value={role}>{roleLabelsCombined[role]}</option>)}
                     </select>
                   </div>
                 </div>
@@ -361,7 +378,7 @@ const Users: React.FC = () => {
                       <td>{u.id}</td>
                       <td>{u.full_name}</td>
                       <td>{u.username}</td>
-                      <td><span className="chip info">{roleLabels[u.role] || u.role}</span></td>
+                      <td><span className="chip info">{roleLabelsCombined[u.role] || u.role}</span></td>
                       <td>{u.position || '—'}</td>
                       <td><span className={`chip ${u.is_active ? 'ok' : 'danger'}`}>{u.is_active ? 'Активен' : 'Неактивен'}</span></td>
                       <td className="tRight">
@@ -403,51 +420,67 @@ const Users: React.FC = () => {
               <table>
               <thead>
                 <tr>
-                  <th style={{ width: '10%' }}>ID</th>
-                  <th>Код</th>
-                  <th>Наименование</th>
-                  <th>Модуль</th>
-                  <th style={{ width: '40%' }}>Роли</th>
+                  <th>Роль</th>
+                  <th style={{ width: '40%' }}>Права</th>
+                  <th style={{ width: '35%' }}>Права для роли</th>
                 </tr>
               </thead>
               <tbody>
-                {paginatedPermissions.length === 0 ? (
+                {paginatedRoles.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ textAlign: 'center', padding: '40px' }}>Разрешения не найдены</td>
+                    <td colSpan={3} style={{ textAlign: 'center', padding: '40px' }}>Роли не найдены</td>
                   </tr>
                 ) : (
-                  paginatedPermissions.map((p) => (
-                    <tr key={p.id}>
-                      <td>{p.id}</td>
-                      <td>{p.code}</td>
-                      <td>{p.name}</td>
-                      <td>{p.module || '—'}</td>
-                      <td>
-                        <button
-                          type="button"
-                          className="btn small"
-                          onClick={() => {
-                            setRoleEditPermission(p);
-                            const rolesForPermission = Object.entries(roleLabels)
-                              .filter(([role]) => (rolePermissions[role] || []).includes(p.id))
-                              .map(([role]) => role);
-                            setRoleEditSelectedRoles(rolesForPermission);
-                            setRoleEditSearch('');
-                          }}
-                        >
-                          Настроить
-                        </button>
-                        {' '}
-                        {Object.entries(roleLabels)
-                          .filter(([role]) => (rolePermissions[role] || []).includes(p.id))
-                          .map(([role, label]) => (
-                            <span key={role} className="chip mini" style={{ marginRight: 4, marginTop: 4 }}>
-                              {label}
-                            </span>
-                          ))}
-                      </td>
-                    </tr>
-                  ))
+                  paginatedRoles.map(([role, label]) => {
+                    const permIds = rolePermissions[role] || [];
+                    const permMap: Record<number, Permission> = {};
+                    filteredPermissions.forEach((p) => {
+                      permMap[p.id] = p;
+                    });
+                    const permsForRole = permIds
+                      .map((id) => permMap[id])
+                      .filter(Boolean) as Permission[];
+                    return (
+                      <tr key={role}>
+                        <td>
+                          {label}
+                          <div className="mini">{role}</div>
+                        </td>
+                        <td>
+                          {permsForRole.length === 0
+                            ? <span className="mini">Права не назначены</span>
+                            : permsForRole.map((p) => (
+                                <span key={p.id} className="chip mini" style={{ marginRight: 4, marginTop: 4 }}>
+                                  {p.name}
+                                </span>
+                              ))}
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className="btn small"
+                            onClick={() => {
+                              setRoleEditRole(role);
+                              setRoleEditSelectedPermissions(permIds);
+                              setRoleEditSearch('');
+                            }}
+                          >
+                            Настроить
+                          </button>
+                          {' '}
+                          {permsForRole.length > 0 && (
+                            <div style={{ marginTop: 4 }}>
+                              {permsForRole.map((p) => (
+                                <span key={p.id} className="chip mini" style={{ marginRight: 4, marginTop: 2 }}>
+                                  {p.code}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -538,9 +571,9 @@ const Users: React.FC = () => {
                     required
                   >
                     <option value="">Выберите роль</option>
-                    {Object.keys(roleLabels).map((role) => (
+                    {Object.keys(roleLabelsCombined).map((role) => (
                       <option key={role} value={role}>
-                        {roleLabels[role]}
+                        {roleLabelsCombined[role]}
                       </option>
                     ))}
                   </select>
@@ -585,15 +618,15 @@ const Users: React.FC = () => {
           </div>
         </div>
       )}
-      {roleEditPermission && (
-        <div className="modal-overlay" onClick={() => { setRoleEditPermission(null); setRoleEditSearch(''); }}>
-          <div className="modal-content modal-small" onClick={(e) => e.stopPropagation()}>
+      {roleEditRole && (
+        <div className="modal-overlay" onClick={() => { setRoleEditRole(null); setRoleEditSearch(''); }}>
+          <div className="modal-content modal-large" style={{ maxWidth: '720px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Роли для права</h2>
+              <h2>Права для роли</h2>
               <button
                 type="button"
                 className="modal-close"
-                onClick={() => { setRoleEditPermission(null); setRoleEditSearch(''); }}
+                onClick={() => { setRoleEditRole(null); setRoleEditSearch(''); }}
                 aria-label="Закрыть"
               >
                 ×
@@ -601,50 +634,81 @@ const Users: React.FC = () => {
             </div>
             <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
               <div className="field">
-                <label>Разрешение</label>
+                <label>Роль</label>
                 <div className="mini">
-                  <strong>{roleEditPermission.code}</strong> — {roleEditPermission.name}
+                  <strong>{roleEditRole && roleLabelsCombined[roleEditRole]}</strong>
+                  {roleEditRole && <span> ({roleEditRole})</span>}
                 </div>
               </div>
               <div className="field">
-                <label>Поиск по ролям</label>
+                <label>Поиск по действиям</label>
                 <input
                   type="text"
                   value={roleEditSearch}
                   onChange={(e) => setRoleEditSearch(e.target.value)}
-                  placeholder="Начните вводить название роли..."
+                  placeholder="Начните вводить код или название действия..."
                 />
               </div>
               <div className="field">
-                <label>Роли (множественный выбор)</label>
-                <select
-                  multiple
-                  size={Math.min(8, Object.keys(roleLabels).length)}
-                  value={roleEditSelectedRoles}
-                  onChange={(e) => {
-                    const options = Array.from(e.target.options);
-                    const selected = options.filter(o => o.selected).map(o => o.value);
-                    setRoleEditSelectedRoles(selected);
-                  }}
-                >
-                  {Object.entries(roleLabels)
-                    .filter(([, label]) => {
-                      if (!roleEditSearch.trim()) return true;
-                      const q = roleEditSearch.toLowerCase();
-                      return label.toLowerCase().includes(q);
-                    })
-                    .map(([role, label]) => (
-                      <option key={role} value={role}>
-                        {label}
-                      </option>
-                    ))}
-                </select>
+                <label>Права (множественный выбор)</label>
+                <div style={{ border: '1px solid var(--line)', borderRadius: 6, overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',
+                      padding: '4px 8px',
+                      background: 'var(--bgElevated)',
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
+                  >
+                    <span>Наименование</span>
+                    <span>Код</span>
+                  </div>
+                  <select
+                    multiple
+                    size={Math.min(10, filteredPermissions.length || 10)}
+                    value={roleEditSelectedPermissions.map(String)}
+                    onChange={(e) => {
+                      const options = Array.from(e.target.options);
+                      const selected = options.filter(o => o.selected).map(o => Number(o.value));
+                      setRoleEditSelectedPermissions(selected);
+                    }}
+                    style={{
+                      width: '100%',
+                      border: 'none',
+                      outline: 'none',
+                      fontFamily: 'inherit',
+                      fontSize: 13,
+                    }}
+                  >
+                    {filteredPermissions
+                      .filter((p) => {
+                        if (!roleEditSearch.trim()) return true;
+                        const q = roleEditSearch.toLowerCase();
+                        return (
+                          p.code.toLowerCase().includes(q) ||
+                          p.name.toLowerCase().includes(q) ||
+                          (p.module || '').toLowerCase().includes(q)
+                        );
+                      })
+                      .map((p) => (
+                        <option
+                          key={p.id}
+                          value={p.id}
+                          style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)' }}
+                        >
+                          {p.name} │ {p.code}
+                        </option>
+                      ))}
+                  </select>
+                </div>
               </div>
               <div className="modal-footer" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
                 <button
                   type="button"
                   className="btn"
-                  onClick={() => { setRoleEditPermission(null); setRoleEditSearch(''); }}
+                  onClick={() => { setRoleEditRole(null); setRoleEditSearch(''); }}
                 >
                   Отмена
                 </button>
@@ -652,22 +716,97 @@ const Users: React.FC = () => {
                   type="button"
                   className="btn primary"
                   onClick={async () => {
-                    if (!roleEditPermission) return;
-                    const permId = roleEditPermission.id;
-                    const currentMap = rolePermissions;
-                    const allRoles = Object.keys(roleLabels);
-                    const promises: Promise<void>[] = [];
-                    allRoles.forEach((role) => {
-                      const currentIds = currentMap[role] || [];
-                      const hasNow = currentIds.includes(permId);
-                      const shouldHave = roleEditSelectedRoles.includes(role);
-                      if (hasNow !== shouldHave) {
-                        promises.push(toggleRolePermission(role, permId, shouldHave) as unknown as Promise<void>);
-                      }
-                    });
-                    await Promise.all(promises);
-                    setRoleEditPermission(null);
+                    if (!roleEditRole) return;
+                    const roleCode = roleEditRole;
+                    const selectedIds = [...roleEditSelectedPermissions];
+                    setRolePermissions((prev) => ({
+                      ...prev,
+                      [roleCode]: selectedIds,
+                    }));
+                    setRoleEditRole(null);
                     setRoleEditSearch('');
+                    try {
+                      await saveRolePermissionsForRole(roleCode, selectedIds);
+                    } catch {
+                      await fetchRolePermissions(permissions);
+                    }
+                  }}
+                >
+                  Сохранить
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {showAddRoleModal && (
+        <div className="modal-overlay" onClick={() => { setShowAddRoleModal(false); setAddRoleError(null); }}>
+          <div className="modal-content" style={{ maxWidth: '420px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Добавить роль</h2>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => { setShowAddRoleModal(false); setAddRoleError(null); }}
+                aria-label="Закрыть"
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              {addRoleError && (
+                <div className="alert error" style={{ marginBottom: 12 }}>{addRoleError}</div>
+              )}
+              <div className="field">
+                <label>Код *</label>
+                <input
+                  type="text"
+                  value={addRoleCode}
+                  onChange={(e) => setAddRoleCode(e.target.value)}
+                  placeholder="например: custom_role"
+                />
+              </div>
+              <div className="field">
+                <label>Наименование *</label>
+                <input
+                  type="text"
+                  value={addRoleName}
+                  onChange={(e) => setAddRoleName(e.target.value)}
+                  placeholder="например: Пользовательская роль"
+                />
+              </div>
+              <div className="modal-footer" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => { setShowAddRoleModal(false); setAddRoleError(null); }}
+                >
+                  Отмена
+                </button>
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={async () => {
+                    const code = addRoleCode.trim();
+                    const name = addRoleName.trim();
+                    if (!code || !name) {
+                      setAddRoleError('Заполните код и наименование.');
+                      return;
+                    }
+                    setAddRoleError(null);
+                    try {
+                      await axios.post(`${API_URL}/roles/`, { code, name });
+                      setShowAddRoleModal(false);
+                      setAddRoleCode('');
+                      setAddRoleName('');
+                      await fetchRoles();
+                      await fetchRolePermissions(permissions);
+                    } catch (err: unknown) {
+                      const msg = axios.isAxiosError(err) && err.response?.data?.detail
+                        ? (Array.isArray(err.response.data.detail) ? err.response.data.detail.map((x: { msg?: string }) => x.msg).join(' ') : String(err.response.data.detail))
+                        : 'Не удалось создать роль.';
+                      setAddRoleError(msg);
+                    }
                   }}
                 >
                   Сохранить

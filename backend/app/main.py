@@ -27,7 +27,7 @@ from app.models.material import Material, Warehouse, WarehouseStock, MaterialMov
 from app.models.document_version import DocumentVersion
 from app.models.application_workflow import ApplicationWorkflow
 from app.models.estimate_validation import EstimateValidation, VolumeProjectMatch, MaterialSpecification, EstimateContractLink, CostControl
-from app.models.user import User, Permission, UserPermission, RolePermission
+from app.models.user import User, Permission, UserPermission, RolePermission, Role
 from app.models.receivables import Receivable, ReceivablePayment, ReceivableNotification, CollectionAction
 from app.models.sales import SalesProposal, SalesProposalItem, CustomerAgreement
 from app.models.document_roadmap import DocumentRoadmapSection, DocumentSectionStatus, DocumentFile

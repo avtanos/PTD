@@ -7,6 +7,7 @@ from app.models.user import (
     Permission as PermissionModel,
     UserPermission as UserPermissionModel,
     RolePermission as RolePermissionModel,
+    Role as RoleModel,
     UserRole,
 )
 from app.models.personnel import Personnel as PersonnelModel
@@ -108,6 +109,25 @@ class UserPermission(UserPermissionBase):
 class RolePermissions(BaseModel):
     role: str
     permission_ids: List[int]
+
+
+class RoleBase(BaseModel):
+    code: str
+    name: str
+    description: Optional[str] = None
+    is_active: bool = True
+
+
+class RoleCreate(RoleBase):
+    pass
+
+
+class RoleOut(RoleBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 def _user_to_response(u: UserModel) -> User:
@@ -233,17 +253,68 @@ def get_user_permissions(user_id: int, db: Session = Depends(get_db)):
     return permissions
 
 
+# Наименования ролей по умолчанию (для сида)
+_ROLE_DEFAULT_NAMES = {
+    "admin": "Администратор",
+    "pto_head": "Руководитель ПТО",
+    "pto_engineer": "Инженер ПТО",
+    "site_manager": "Начальник участка",
+    "foreman": "Прораб",
+    "master": "Мастер",
+    "storekeeper": "Заведующий складом",
+    "operator": "Оператор СМУ",
+    "geodesist": "Геодезист",
+    "oge_head": "Руководитель ОГЭ",
+    "ogm_head": "Руководитель ОГМ",
+    "architect": "Архитектор",
+    "sales_manager": "Менеджер по продажам",
+    "accountant": "Бухгалтер",
+    "debt_collector": "Отдел дебиторки",
+}
+
+
+def _ensure_roles_seeded(db: Session) -> None:
+    """Заполнить таблицу roles из UserRole, если она пуста."""
+    if db.query(RoleModel).count() > 0:
+        return
+    for role_enum in UserRole:
+        name = _ROLE_DEFAULT_NAMES.get(role_enum.value, role_enum.value)
+        db.add(RoleModel(code=role_enum.value, name=name, is_active=True))
+    db.commit()
+
+
+@router.get("/roles/", response_model=List[RoleOut])
+def get_roles(db: Session = Depends(get_db)):
+    """Список ролей (справочник). При первом запросе заполняется из enum."""
+    _ensure_roles_seeded(db)
+    return db.query(RoleModel).filter(RoleModel.is_active == True).order_by(RoleModel.id).all()
+
+
+@router.post("/roles/", response_model=RoleOut)
+def create_role(role: RoleCreate, db: Session = Depends(get_db)):
+    """Создать роль."""
+    existing = db.query(RoleModel).filter(RoleModel.code == role.code).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Роль с таким кодом уже существует")
+    db_role = RoleModel(**role.model_dump())
+    db.add(db_role)
+    db.commit()
+    db.refresh(db_role)
+    return db_role
+
+
 @router.get("/roles/permissions", response_model=List[RolePermissions])
 def get_roles_permissions(db: Session = Depends(get_db)):
     """Получить матрицу ролей и разрешений (привязка прав к ролям)."""
+    _ensure_roles_seeded(db)
     rows = db.query(RolePermissionModel).all()
     mapping: dict[str, set[int]] = {}
     for r in rows:
         mapping.setdefault(r.role, set()).add(r.permission_id)
 
-    # Добавляем все роли из enum, даже если пока нет записей
-    for role_enum in UserRole:
-        mapping.setdefault(role_enum.value, set())
+    # Добавляем все роли из справочника (в т.ч. созданные пользователем)
+    for r in db.query(RoleModel).filter(RoleModel.is_active == True).all():
+        mapping.setdefault(r.code, set())
 
     result: List[RolePermissions] = []
     for role, ids in mapping.items():
@@ -254,12 +325,9 @@ def get_roles_permissions(db: Session = Depends(get_db)):
 @router.put("/roles/{role}/permissions", response_model=RolePermissions)
 def set_role_permissions(role: str, payload: RolePermissions, db: Session = Depends(get_db)):
     """Задать набор разрешений для роли (полная перезапись)."""
-    try:
-        # Валидируем, что роль известна
-        role_enum = UserRole(role)
-        role_value = role_enum.value
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Неизвестная роль")
+    role_value = role.strip()
+    if not role_value:
+        raise HTTPException(status_code=400, detail="Код роли не указан")
 
     # Проверяем, что все разрешения существуют
     if payload.permission_ids:

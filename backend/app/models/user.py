@@ -83,12 +83,27 @@ class UserPermission(Base):
     permission = relationship("Permission", back_populates="users")
 
 
+class Role(Base):
+    """Справочник ролей (динамическое создание ролей)"""
+    __tablename__ = "roles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(100), unique=True, index=True, nullable=False, comment="Код роли")
+    name = Column(String(200), nullable=False, comment="Наименование")
+    description = Column(Text, comment="Описание")
+    is_active = Column(Boolean, default=True, comment="Активен")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    # role_permissions ссылается на role по коду (строка), не по id
+
+
 class RolePermission(Base):
     """Связь роли с разрешениями (матрица ролей и прав доступа)"""
     __tablename__ = "role_permissions"
 
     id = Column(Integer, primary_key=True, index=True)
-    role = Column(String(100), nullable=False, index=True, comment="Код роли (enum UserRole)")
+    role = Column(String(100), nullable=False, index=True, comment="Код роли")
     permission_id = Column(Integer, ForeignKey("permissions.id"), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
