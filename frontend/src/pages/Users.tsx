@@ -545,24 +545,6 @@ const Users: React.FC = () => {
                   </select>
                 </div>
                 <div className="field">
-                  <label>Email</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleFormChange}
-                  />
-                </div>
-                <div className="field">
-                  <label>Телефон</label>
-                  <input
-                    type="text"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleFormChange}
-                  />
-                </div>
-                <div className="field">
                   <label>Роль *</label>
                   <select
                     name="role"
