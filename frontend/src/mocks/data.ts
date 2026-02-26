@@ -127,6 +127,27 @@ export interface MockContract {
   project?: { id: number; name: string };
 }
 
+export interface MockUser {
+  id: number;
+  username: string;
+  email?: string;
+  full_name: string;
+  role: string;
+  department_id?: number;
+  position?: string;
+  phone?: string;
+  is_active: boolean;
+  notes?: string;
+  personnel_id?: number | null;
+}
+
+export interface MockPermission {
+  id: number;
+  code: string;
+  name: string;
+  module?: string;
+}
+
 // Мок-данные
 export const mockDepartments: MockDepartment[] = [
   {
@@ -313,6 +334,72 @@ export const mockProjects: MockProject[] = [
     created_at: '2023-01-01T08:00:00Z',
     department_name: 'ПТО',
   },
+];
+
+export const mockUsers: MockUser[] = [
+  {
+    id: 1,
+    username: 'admin',
+    email: 'admin@company.ru',
+    full_name: 'Администратор системы',
+    role: 'admin',
+    department_id: 1,
+    position: 'Администратор',
+    phone: '+7 (900) 000-00-01',
+    is_active: true,
+    notes: 'Полный доступ ко всем модулям',
+    personnel_id: null,
+  },
+  {
+    id: 2,
+    username: 'pto_head',
+    email: 'pto.head@company.ru',
+    full_name: 'Иванов Иван Иванович',
+    role: 'pto_head',
+    department_id: 1,
+    position: 'Руководитель ПТО',
+    phone: '+7 (900) 000-00-02',
+    is_active: true,
+    notes: 'Отвечает за ПТО и дорожные карты документов',
+    personnel_id: 1,
+  },
+  {
+    id: 3,
+    username: 'foreman1',
+    email: 'foreman1@company.ru',
+    full_name: 'Петров Петр Петрович',
+    role: 'foreman',
+    department_id: 2,
+    position: 'Прораб',
+    phone: '+7 (900) 000-00-03',
+    is_active: true,
+    notes: 'Прораб по объекту «Солнечный»',
+    personnel_id: 2,
+  },
+  {
+    id: 4,
+    username: 'storekeeper',
+    email: 'store@company.ru',
+    full_name: 'Сидорова Анна Сергеевна',
+    role: 'storekeeper',
+    department_id: 5,
+    position: 'Заведующий складом',
+    phone: '+7 (900) 000-00-04',
+    is_active: true,
+    notes: 'Работа с материалами и складом',
+    personnel_id: 3,
+  },
+];
+
+export const mockPermissions: MockPermission[] = [
+  { id: 1, code: 'projects.view', name: 'Просмотр проектов', module: 'projects' },
+  { id: 2, code: 'projects.edit', name: 'Редактирование проектов', module: 'projects' },
+  { id: 3, code: 'roadmap.view', name: 'Просмотр дорожной карты документов', module: 'documents' },
+  { id: 4, code: 'roadmap.edit', name: 'Редактирование дорожной карты документов', module: 'documents' },
+  { id: 5, code: 'personnel.view', name: 'Просмотр кадров', module: 'personnel' },
+  { id: 6, code: 'personnel.edit', name: 'Редактирование кадров', module: 'personnel' },
+  { id: 7, code: 'finance.view', name: 'Просмотр финансовых показателей', module: 'finance' },
+  { id: 8, code: 'users.manage', name: 'Управление пользователями и ролями', module: 'admin' },
 ];
 
 /** Справочник проекта по id — единый источник названий для синхронизации разделов */

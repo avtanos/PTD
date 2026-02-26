@@ -62,6 +62,7 @@ class Permission(Base):
 
     # Relationships
     users = relationship("UserPermission", back_populates="permission")
+    role_links = relationship("RolePermission", back_populates="permission", cascade="all, delete-orphan")
 
 
 class UserPermission(Base):
@@ -80,3 +81,16 @@ class UserPermission(Base):
     # Relationships
     user = relationship("User", back_populates="permissions")
     permission = relationship("Permission", back_populates="users")
+
+
+class RolePermission(Base):
+    """Связь роли с разрешениями (матрица ролей и прав доступа)"""
+    __tablename__ = "role_permissions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    role = Column(String(100), nullable=False, index=True, comment="Код роли (enum UserRole)")
+    permission_id = Column(Integer, ForeignKey("permissions.id"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    permission = relationship("Permission", back_populates="role_links")
