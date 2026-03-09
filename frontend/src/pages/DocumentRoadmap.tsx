@@ -97,6 +97,16 @@ export interface RoadmapFileInfo {
   description?: string;
 }
 
+interface NpaItem {
+  id: number;
+  title: string;
+  description?: string | null;
+  number?: string | null;
+  date?: string | null;
+  file_name?: string | null;
+  section_codes: string[];
+}
+
 const STATUS: Record<string, { label: string; tag: string }> = {
   not_started: { label: 'Не начато', tag: 'info' },
   in_progress: { label: 'В работе', tag: 'warn' },
@@ -224,7 +234,7 @@ const CYTOSCAPE_STYLE = [
   { selector: 'node[status="in_progress"]', style: { 'background-color': '#fef9c3', 'border-color': '#ffcc66' }},
   { selector: 'node[status="approval"]', style: { 'background-color': '#e0f2fe', 'border-color': '#38bdf8' }},
   { selector: 'node[status="blocked"]', style: { 'background-color': '#ffe4e4', 'border-color': '#ff6b6b' }},
-  { selector: 'node[status="not_started"]', style: { 'background-color': '#f1f5f9', 'border-color': '#94a3b8' }},
+  { selector: 'node[status="not_started"]', style: { 'background-color': '#ede9fe', 'border-color': '#a78bfa' }},
   { selector: 'node.selected', style: { 'border-color': '#2563eb', 'border-width': 3 }},
   { selector: 'node.dim', style: { opacity: 0.2 }},
   { selector: 'edge', style: {
@@ -314,6 +324,8 @@ const DocumentRoadmap: React.FC = () => {
   const [cardFiles, setCardFiles] = useState<RoadmapFileInfo[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [npaList, setNpaList] = useState<NpaItem[]>([]);
+  const [loadingNpa, setLoadingNpa] = useState(false);
   // Не используются в UI — статусы синхронизируются из разделов проекта; оставлены для совместимости с HMR.
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -427,6 +439,21 @@ const DocumentRoadmap: React.FC = () => {
     if (selectedStatus?.id) fetchCardFiles(selectedStatus.id);
     else setCardFiles([]);
   }, [selectedStatus?.id, fetchCardFiles]);
+
+  useEffect(() => {
+    if (!selectedSectionCode) {
+      setNpaList([]);
+      return;
+    }
+    setLoadingNpa(true);
+    axios
+      .get<NpaItem[]>(`${API_URL}/document-roadmap/npa/by-section/${selectedSectionCode}`)
+      .then((res) => {
+        setNpaList(Array.isArray(res.data) ? res.data : []);
+      })
+      .catch(() => setNpaList([]))
+      .finally(() => setLoadingNpa(false));
+  }, [selectedSectionCode]);
 
   const handleUploadFile = useCallback(
     async (file: File) => {
@@ -941,6 +968,44 @@ const DocumentRoadmap: React.FC = () => {
                           />
                         </label>
                       </div>
+                      <div className="divider" />
+                      <div className="groupTitle">НПА для этого блока</div>
+                      {loadingNpa ? (
+                        <p className="muted">Загрузка…</p>
+                      ) : npaList.length === 0 ? (
+                        <p className="muted">НПА не привязаны.</p>
+                      ) : (
+                        <ul className="listMini">
+                          {npaList.map((npa) => (
+                            <li key={npa.id} className="miniItem">
+                              <b>{npa.title}</b>
+                              {(npa.number || npa.date) && (
+                                <p>
+                                  {npa.number && <>№ {npa.number}</>}
+                                  {npa.date && (
+                                    <>
+                                      {' '}
+                                      от {new Date(npa.date).toLocaleDateString('ru-RU')}
+                                    </>
+                                  )}
+                                </p>
+                              )}
+                              {npa.description && <p>{npa.description}</p>}
+                              {npa.file_name && (
+                                <p>
+                                  <a
+                                    href={`${API_URL}/document-roadmap/npa/${npa.id}/download`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    {npa.file_name}
+                                  </a>
+                                </p>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </>
                   ) : selectedSectionCode && selectedProjectId ? (
                     <p className="muted" style={{ marginTop: 8 }}>Создание статуса…</p>

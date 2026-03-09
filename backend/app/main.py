@@ -30,7 +30,13 @@ from app.models.estimate_validation import EstimateValidation, VolumeProjectMatc
 from app.models.user import User, Permission, UserPermission, RolePermission, Role
 from app.models.receivables import Receivable, ReceivablePayment, ReceivableNotification, CollectionAction
 from app.models.sales import SalesProposal, SalesProposalItem, CustomerAgreement
-from app.models.document_roadmap import DocumentRoadmapSection, DocumentSectionStatus, DocumentFile
+from app.models.document_roadmap import (
+    DocumentRoadmapSection,
+    DocumentSectionStatus,
+    DocumentFile,
+    NPA,
+    NPASection,
+)
 from app.models.document_notification import DocumentNotification
 from app.models.personnel import Personnel, ProjectPersonnel, PersonnelDocument, PersonnelHistory
 

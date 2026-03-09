@@ -5,6 +5,7 @@ from typing import List, Optional
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
+import json
 import os
 import shutil
 from app.db.database import get_db
@@ -13,9 +14,15 @@ from app.models.document_roadmap import (
     DocumentSectionStatus as StatusModel,
     DocumentFile as FileModel,
     ExecutionStatus,
-    DocumentStatus
+    DocumentStatus,
+    NPA,
+    NPASection,
 )
-from app.models.document_notification import DocumentNotification as NotificationModel, NotificationType, NotificationChannel
+from app.models.document_notification import (
+    DocumentNotification as NotificationModel,
+    NotificationType,
+    NotificationChannel,
+)
 from app.models.project import Project
 from app.models.project_documentation import ProjectDocumentation as ProjectDocumentationModel
 from app.models.executive_survey import ExecutiveSurvey as ExecutiveSurveyModel
@@ -27,6 +34,9 @@ router = APIRouter()
 # Настройки для хранения файлов
 UPLOAD_DIR = Path("uploads/documents")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+NPA_UPLOAD_DIR = Path("uploads/npa")
+NPA_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # Pydantic схемы
@@ -114,6 +124,38 @@ class RoadmapFileRow(BaseModel):
     project_name: str
     section_code: str
     section_name: str
+
+    class Config:
+        from_attributes = True
+
+
+class NPABase(BaseModel):
+    """Базовая схема НПА."""
+
+    title: str
+    description: Optional[str] = None
+    number: Optional[str] = None
+    date: Optional[date] = None
+    section_codes: List[str] = []
+
+
+class NPACreate(NPABase):
+    pass
+
+
+class NPAUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    number: Optional[str] = None
+    date: Optional[str] = None  # ISO "YYYY-MM-DD" или null
+    section_codes: Optional[List[str]] = None
+
+
+class NPAOut(NPABase):
+    id: int
+    file_name: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -366,6 +408,231 @@ def get_all_roadmap_files(
         )
         for f, st, sec, proj in rows
     ]
+
+
+# --- NPA endpoints ---
+
+
+@router.get("/npa/", response_model=List[NPAOut])
+def list_npa(db: Session = Depends(get_db)):
+    """Справочник НПА."""
+    npas = (
+        db.query(NPA)
+        .filter(NPA.is_active == True)  # noqa: E712
+        .order_by(NPA.created_at.desc())
+        .all()
+    )
+    result: List[NPAOut] = []
+    for npa in npas:
+        section_codes = [rel.section_code for rel in npa.sections]
+        result.append(
+            NPAOut(
+                id=npa.id,
+                title=npa.title,
+                description=npa.description,
+                number=npa.number,
+                date=npa.date,
+                section_codes=section_codes,
+                file_name=npa.file_name,
+                created_at=npa.created_at,
+                updated_at=npa.updated_at,
+            )
+        )
+    return result
+
+
+@router.post("/npa/", response_model=NPAOut)
+async def create_npa(
+    title: str = Form(...),
+    description: Optional[str] = Form(None),
+    number: Optional[str] = Form(None),
+    date_value: Optional[str] = Form(None, alias="date"),
+    section_codes: str = Form("[]"),
+    file: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+):
+    """Создать НПА и привязать его к блокам дорожной карты."""
+    try:
+        codes: List[str] = json.loads(section_codes) if section_codes else []
+    except Exception:
+        raise HTTPException(status_code=400, detail="Некорректный формат section_codes")
+
+    parsed_date: Optional[date] = None
+    if date_value:
+        try:
+            parsed_date = datetime.fromisoformat(date_value).date()
+        except Exception:
+            raise HTTPException(status_code=400, detail="Некорректный формат даты")
+
+    stored_path: Optional[str] = None
+    file_name: Optional[str] = None
+    if file:
+        safe_name = quote(file.filename)
+        dest = NPA_UPLOAD_DIR / safe_name
+        with dest.open("wb") as f:
+            f.write(await file.read())
+        stored_path = str(dest)
+        file_name = file.filename
+
+    npa = NPA(
+        title=title,
+        description=description,
+        number=number,
+        date=parsed_date,
+        stored_path=stored_path,
+        file_name=file_name,
+    )
+    db.add(npa)
+    db.flush()
+
+    if codes:
+        sections = (
+            db.query(SectionModel)
+            .filter(SectionModel.code.in_(codes))
+            .all()
+        )
+        for section in sections:
+            db.add(
+                NPASection(
+                    npa_id=npa.id,
+                    section_id=section.id,
+                    section_code=section.code,
+                )
+            )
+
+    db.commit()
+    db.refresh(npa)
+
+    actual_codes = [rel.section_code for rel in npa.sections]
+    return NPAOut(
+        id=npa.id,
+        title=npa.title,
+        description=npa.description,
+        number=npa.number,
+        date=npa.date,
+        section_codes=actual_codes,
+        file_name=npa.file_name,
+        created_at=npa.created_at,
+        updated_at=npa.updated_at,
+    )
+
+
+@router.get("/npa/by-section/{section_code}", response_model=List[NPAOut])
+def get_npa_by_section(section_code: str, db: Session = Depends(get_db)):
+    """Получить НПА, привязанные к блоку дорожной карты по коду секции."""
+    links = (
+        db.query(NPASection)
+        .join(NPA, NPASection.npa_id == NPA.id)
+        .filter(
+            NPASection.section_code == section_code,
+            NPA.is_active == True,  # noqa: E712
+        )
+        .all()
+    )
+    result: List[NPAOut] = []
+    for link in links:
+        npa = link.npa
+        section_codes = [rel.section_code for rel in npa.sections]
+        result.append(
+            NPAOut(
+                id=npa.id,
+                title=npa.title,
+                description=npa.description,
+                number=npa.number,
+                date=npa.date,
+                section_codes=section_codes,
+                file_name=npa.file_name,
+                created_at=npa.created_at,
+                updated_at=npa.updated_at,
+            )
+        )
+    return result
+
+
+@router.get("/npa/{npa_id}/download")
+def download_npa_file(npa_id: int, db: Session = Depends(get_db)):
+    """Скачать файл НПА."""
+    npa = db.query(NPA).filter(NPA.id == npa_id, NPA.is_active == True).first()  # noqa: E712
+    if not npa or not npa.stored_path or not os.path.exists(npa.stored_path):
+        raise HTTPException(status_code=404, detail="Файл НПА не найден")
+    from fastapi.responses import FileResponse
+
+    return FileResponse(
+        path=npa.stored_path,
+        filename=npa.file_name or os.path.basename(npa.stored_path),
+        media_type="application/pdf",
+    )
+
+
+@router.put("/npa/{npa_id}", response_model=NPAOut)
+def update_npa(npa_id: int, payload: NPAUpdate, db: Session = Depends(get_db)):
+    """Обновить НПА (без смены файла)."""
+    npa = db.query(NPA).filter(NPA.id == npa_id, NPA.is_active == True).first()  # noqa: E712
+    if not npa:
+        raise HTTPException(status_code=404, detail="НПА не найден")
+
+    data = payload.model_dump(exclude_unset=True)
+    section_codes = data.pop("section_codes", None)
+
+    if "date" in data:
+        d = data.pop("date")
+        if d:
+            try:
+                data["date"] = datetime.fromisoformat(d).date() if isinstance(d, str) else d
+            except (ValueError, TypeError):
+                raise HTTPException(status_code=422, detail="Некорректный формат даты")
+        else:
+            data["date"] = None
+
+    for field, value in data.items():
+        setattr(npa, field, value)
+
+    codes_for_response: List[str] = []
+    if section_codes is not None:
+        db.query(NPASection).filter(NPASection.npa_id == npa.id).delete()
+        if section_codes:
+            sections = (
+                db.query(SectionModel)
+                .filter(SectionModel.code.in_(section_codes))
+                .all()
+            )
+            for section in sections:
+                db.add(
+                    NPASection(
+                        npa_id=npa.id,
+                        section_id=section.id,
+                        section_code=section.code,
+                    )
+                )
+                codes_for_response.append(section.code)
+    else:
+        links = db.query(NPASection).filter(NPASection.npa_id == npa.id).all()
+        codes_for_response = [link.section_code for link in links]
+
+    db.commit()
+    db.refresh(npa)
+    return NPAOut(
+        id=npa.id,
+        title=npa.title,
+        description=npa.description,
+        number=npa.number,
+        date=npa.date,
+        section_codes=codes_for_response,
+        file_name=npa.file_name,
+        created_at=npa.created_at,
+        updated_at=npa.updated_at,
+    )
+
+
+@router.delete("/npa/{npa_id}")
+def delete_npa(npa_id: int, db: Session = Depends(get_db)):
+    """Пометить НПА как неактивный."""
+    npa = db.query(NPA).filter(NPA.id == npa_id, NPA.is_active == True).first()  # noqa: E712
+    if not npa:
+        raise HTTPException(status_code=404, detail="НПА не найден")
+    npa.is_active = False
+    db.commit()
+    return {"status": "ok"}
 
 
 @router.post("/projects/{project_id}/init-statuses", response_model=List[Status])

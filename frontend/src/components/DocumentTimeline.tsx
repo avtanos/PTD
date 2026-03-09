@@ -166,7 +166,7 @@ const DocumentTimeline: React.FC<DocumentTimelineProps> = ({ projectId, projects
   const getExecutionStatusColor = (status: string): string => {
     switch (status) {
       case 'not_started':
-        return '#dc3545'; // Красный
+        return '#a78bfa'; // Фиолетовый
       case 'in_progress':
         return '#ffc107'; // Желтый
       case 'completed':

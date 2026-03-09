@@ -90,3 +90,35 @@ class DocumentFile(Base):
 
     # Relationships
     status = relationship("DocumentSectionStatus", back_populates="files")
+
+
+class NPA(Base):
+    """Нормативно‑правовой акт (НПА), связанный с блоками дорожной карты."""
+
+    __tablename__ = "document_npa"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(500), nullable=False, comment="Название НПА")
+    description = Column(Text, nullable=True)
+    number = Column(String(100), nullable=True, comment="Номер НПА")
+    date = Column(Date, nullable=True, comment="Дата НПА")
+    file_name = Column(String(500), nullable=True, comment="Оригинальное имя файла")
+    stored_path = Column(String(1000), nullable=True, comment="Путь к файлу на сервере")
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class NPASection(Base):
+    """Связка НПА с узлами дорожной карты по кодам секций."""
+
+    __tablename__ = "document_npa_sections"
+
+    id = Column(Integer, primary_key=True, index=True)
+    npa_id = Column(Integer, ForeignKey("document_npa.id"), nullable=False, index=True)
+    section_id = Column(Integer, ForeignKey("document_roadmap_sections.id"), nullable=False, index=True)
+    section_code = Column(String(200), nullable=False, index=True)
+
+    npa = relationship("NPA", backref="sections")
+    section = relationship("DocumentRoadmapSection", backref="npas")
+

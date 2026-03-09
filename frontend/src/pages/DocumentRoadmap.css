@@ -107,7 +107,7 @@
 .documentRoadmapPage .canvasHeadRow .chip.warn .dot { background: var(--rm-warn); }
 .documentRoadmapPage .canvasHeadRow .chip.danger .dot { background: var(--rm-danger); }
 .documentRoadmapPage .canvasHeadRow .chip.info .dot { background: var(--rm-info); }
-.documentRoadmapPage .canvasHeadRow .chip.notstarted .dot { background: #94a3b8; }
+.documentRoadmapPage .canvasHeadRow .chip.notstarted .dot { background: #a78bfa; }
 .documentRoadmapPage .canvasHeadRow .chip:hover { border-color: rgba(110,168,254,.6); }
 .documentRoadmapPage .canvasHeadRow .chip.active { border-color: var(--rm-accent); background: rgba(110,168,254,.2); }
 

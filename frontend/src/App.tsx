@@ -21,6 +21,7 @@ import Departments from './pages/Departments';
 import Constructs from './pages/Constructs';
 import StandardRates from './pages/StandardRates';
 import ProjectDocumentation from './pages/ProjectDocumentation';
+import Npa from './pages/Npa';
 // Import all stub pages
 import ExecutiveSurveys from './pages/ExecutiveSurveys';
 import WorkVolumes from './pages/WorkVolumes';
@@ -97,6 +98,7 @@ const App: React.FC = () => {
       case 'departments': return <Departments />;
       case 'constructs': return <Constructs />;
       case 'standardrates': return <StandardRates />;
+      case 'npa': return <Npa />;
       case 'projdocs': return <ProjectDocumentation />;
       case 'surveys': return <ExecutiveSurveys />;
       case 'volumes': return <WorkVolumes />;
@@ -204,6 +206,7 @@ const App: React.FC = () => {
           <NavLink to="departments" icon="M4 21V3h16v18H4Zm2-2h12v-4H6v4Zm0-6h12V5H6v8Z">Подразделения</NavLink>
           <NavLink to="constructs" icon="M12 2 2 7l10 5 10-5-10-5Zm0 7L2 4v14l10 5 10-5V4l-10 5Z">Конструктивы</NavLink>
           <NavLink to="standardrates" icon="M3 17h18v2H3v-2Zm2-4h14v2H5v-2Zm0-4h14v2H5V9Zm0-4h14v2H5V5Z">Нормативные расценки</NavLink>
+          <NavLink to="npa" icon="M6 2h12v4H6V2Zm0 6h12v14H6V8Zm2 3v2h8v-2H8Zm0 4v2h8v-2H8Z">НПА</NavLink>
         </nav>
 
         <div className="navGroup">Администрирование</div>
