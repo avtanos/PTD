@@ -20,8 +20,10 @@ interface ReceivableNotification {
   notification_type: string;
   sent_to: string;
   subject?: string;
-  content?: string;
-  status: string;
+  message?: string;
+  notes?: string;
+  is_sent: boolean;
+  sent_at?: string;
 }
 
 interface CollectionAction {
@@ -623,6 +625,31 @@ const Receivables: React.FC = () => {
                 <>
                   <div className="toolbar" style={{ marginTop: '10px' }}>
                     <a className="btn primary small" href="#receivables" onClick={(e) => { e.preventDefault(); setShowNotificationModal(true); }}>+ Создать уведомление</a>
+                    <button
+                      type="button"
+                      className="btn small"
+                      onClick={async () => {
+                        if (!selectedReceivable) return;
+                        try {
+                          await axios.post(`${API_URL}/receivables/${selectedReceivable.id}/notifications/mark-all-read`);
+                          setSelectedReceivable((prev) => {
+                            if (!prev) return prev;
+                            return {
+                              ...prev,
+                              notifications: (prev.notifications || []).map((n) => ({ ...n, is_sent: true, sent_at: n.sent_at || new Date().toISOString() })),
+                            };
+                          });
+                        } catch (err) {
+                          console.error('Ошибка отметки уведомлений как прочитанных:', err);
+                          alert('Не удалось отметить уведомления как прочитанные.');
+                        }
+                      }}
+                      disabled={!selectedReceivable.notifications || selectedReceivable.notifications.length === 0}
+                      title="Пометить все уведомления как прочитанные"
+                      style={{ marginLeft: 8 }}
+                    >
+                      Прочитано всё
+                    </button>
                   </div>
                   <table style={{ marginTop: '10px' }}>
                     <thead>
@@ -646,7 +673,7 @@ const Receivables: React.FC = () => {
                             <td>{n.notification_type}</td>
                             <td>{n.sent_to}</td>
                             <td>{n.subject || '—'}</td>
-                            <td><span className="chip info">{n.status}</span></td>
+                            <td><span className={`chip ${n.is_sent ? 'ok' : 'warn'}`}>{n.is_sent ? 'Прочитано' : 'Не прочитано'}</span></td>
                           </tr>
                         ))
                       )}

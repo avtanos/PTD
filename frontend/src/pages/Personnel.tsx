@@ -88,7 +88,7 @@ const Personnel: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<PersonnelItem | null>(null);
-  const [filters, setFilters] = useState({ search: '', department_id: '', status: '' });
+  const [filters, setFilters] = useState({ search: '', department_id: '', status: '', position: '' });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(20);
   const [modalTab, setModalTab] = useState<'main' | 'documents' | 'history'>('main');
@@ -192,11 +192,11 @@ const Personnel: React.FC = () => {
       }
       setFormSuccess(true);
       setTimeout(() => {
-        setShowModal(false);
-        setEditing(null);
-        resetForm();
+      setShowModal(false);
+      setEditing(null);
+      resetForm();
         setFormSuccess(false);
-        fetchPersonnel();
+      fetchPersonnel();
       }, 400);
     } catch (err: unknown) {
       const msg = axios.isAxiosError(err) && err.response?.data?.detail
@@ -236,10 +236,12 @@ const Personnel: React.FC = () => {
   };
 
   const filteredPersonnel = personnel.filter((p) => {
+    if (filters.department_id && String(p.department_id ?? '') !== filters.department_id) return false;
+    if (filters.status && p.status !== filters.status) return false;
+    if (filters.position && p.position !== filters.position) return false;
     if (filters.search) {
       const s = filters.search.toLowerCase();
-      if (!p.full_name?.toLowerCase().includes(s) && !p.position?.toLowerCase().includes(s) && !p.tab_number?.toLowerCase().includes(s))
-        return false;
+      if (!p.full_name?.toLowerCase().includes(s) && !p.tab_number?.toLowerCase().includes(s)) return false;
     }
     return true;
   });
@@ -286,34 +288,57 @@ const Personnel: React.FC = () => {
             <span className="chip info">Кадры</span>
           </div>
           <div className="cardBody">
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-              <input
-                type="text"
-                placeholder="Поиск по ФИО, должности, табельному..."
-                value={filters.search}
-                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                style={{ maxWidth: '280px' }}
-              />
-              <select
-                value={filters.department_id}
-                onChange={(e) => setFilters({ ...filters, department_id: e.target.value })}
-              >
-                <option value="">Все подразделения</option>
-                {departments.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
-              </select>
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-              >
-                <option value="">Все статусы</option>
-                <option value="employed">В штате</option>
-                <option value="dismissed">Уволен</option>
-                <option value="vacation">Отпуск</option>
-                <option value="maternity">Декретный</option>
-                <option value="sick_leave">Больничный</option>
-              </select>
+            <div className="toolbar" style={{ marginBottom: '12px' }}>
+              <div className="filters">
+                <div className="field">
+                  <label>ФИО / таб. №</label>
+                  <input
+                    type="text"
+                    placeholder="Например: Иванов"
+                    value={filters.search}
+                    onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                    style={{ maxWidth: '260px' }}
+                  />
+                </div>
+                <div className="field">
+                  <label>Подразделение</label>
+                  <select
+                    value={filters.department_id}
+                    onChange={(e) => setFilters({ ...filters, department_id: e.target.value })}
+                  >
+                    <option value="">Все</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label>Статус</label>
+                  <select
+                    value={filters.status}
+                    onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                  >
+                    <option value="">Все</option>
+                    <option value="employed">В штате</option>
+                    <option value="dismissed">Уволен</option>
+                    <option value="vacation">Отпуск</option>
+                    <option value="maternity">Декретный</option>
+                    <option value="sick_leave">Больничный</option>
+                  </select>
+                </div>
+                <div className="field">
+                  <label>Должность</label>
+                  <select
+                    value={filters.position}
+                    onChange={(e) => setFilters({ ...filters, position: e.target.value })}
+                  >
+                    <option value="">Все</option>
+                    {POSITIONS.map((pos) => (
+                      <option key={pos} value={pos}>{pos}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
             <table>
               <thead>
@@ -456,21 +481,21 @@ const Personnel: React.FC = () => {
                 >
                   История
                 </button>
-              </div>
+            </div>
             )}
             <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
               {modalTab === 'main' && (
-                <form onSubmit={handleSubmit}>
-                  <div className="field">
-                    <label>Табельный номер</label>
-                    <input type="text" value={formData.tab_number} onChange={(e) => setFormData({ ...formData, tab_number: e.target.value })} />
-                  </div>
-                  <div style={{ height: '10px' }} />
-                  <div className="field">
-                    <label>ФИО *</label>
-                    <input type="text" value={formData.full_name} onChange={(e) => setFormData({ ...formData, full_name: e.target.value })} required />
-                  </div>
-                  <div style={{ height: '10px' }} />
+              <form onSubmit={handleSubmit}>
+                <div className="field">
+                  <label>Табельный номер</label>
+                  <input type="text" value={formData.tab_number} onChange={(e) => setFormData({ ...formData, tab_number: e.target.value })} />
+                </div>
+                <div style={{ height: '10px' }} />
+                <div className="field">
+                  <label>ФИО *</label>
+                  <input type="text" value={formData.full_name} onChange={(e) => setFormData({ ...formData, full_name: e.target.value })} required />
+                </div>
+                <div style={{ height: '10px' }} />
                 <div className="field">
                   <label>Должность *</label>
                   <select
@@ -484,28 +509,28 @@ const Personnel: React.FC = () => {
                     ))}
                   </select>
                 </div>
-                  <div style={{ height: '10px' }} />
-                  <div className="field">
-                    <label>Подразделение</label>
-                    <select value={formData.department_id} onChange={(e) => setFormData({ ...formData, department_id: e.target.value ? Number(e.target.value) : '' })}>
-                      <option value="">—</option>
-                      {departments.map((d) => (
-                        <option key={d.id} value={d.id}>{d.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div style={{ height: '10px' }} />
+                <div style={{ height: '10px' }} />
+                <div className="field">
+                  <label>Подразделение</label>
+                  <select value={formData.department_id} onChange={(e) => setFormData({ ...formData, department_id: e.target.value ? Number(e.target.value) : '' })}>
+                    <option value="">—</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ height: '10px' }} />
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
-                    <div className="field">
-                      <label>Дата приёма *</label>
-                      <input type="date" value={formData.hire_date} onChange={(e) => setFormData({ ...formData, hire_date: e.target.value })} required />
-                    </div>
-                    <div className="field">
-                      <label>Дата увольнения</label>
-                      <input type="date" value={formData.dismissal_date} onChange={(e) => setFormData({ ...formData, dismissal_date: e.target.value })} />
-                    </div>
+                  <div className="field">
+                    <label>Дата приёма *</label>
+                    <input type="date" value={formData.hire_date} onChange={(e) => setFormData({ ...formData, hire_date: e.target.value })} required />
                   </div>
-                  <div style={{ height: '10px' }} />
+                  <div className="field">
+                    <label>Дата увольнения</label>
+                    <input type="date" value={formData.dismissal_date} onChange={(e) => setFormData({ ...formData, dismissal_date: e.target.value })} />
+                  </div>
+                </div>
+                <div style={{ height: '10px' }} />
                   <div className="field">
                     <label>Дата рождения</label>
                     <input type="date" value={formData.birth_date} onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })} />
@@ -515,34 +540,34 @@ const Personnel: React.FC = () => {
                     <div className="field">
                       <label>Телефон</label>
                       <input type="text" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="+7 (___) ___-__-__" />
-                    </div>
-                    <div className="field">
-                      <label>Email</label>
-                      <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
-                    </div>
                   </div>
+                  <div className="field">
+                    <label>Email</label>
+                    <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+                  </div>
+                </div>
                   <div style={{ height: '10px' }} />
                   <div className="field">
                     <label>ИНН</label>
                     <input type="text" value={formData.inn} onChange={(e) => setFormData({ ...formData, inn: e.target.value })} placeholder="10 или 12 цифр" maxLength={12} />
                   </div>
-                  <div style={{ height: '10px' }} />
-                  <div className="field">
-                    <label>Статус</label>
-                    <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}>
-                      <option value="employed">В штате</option>
-                      <option value="dismissed">Уволен</option>
-                      <option value="vacation">Отпуск</option>
-                      <option value="maternity">Декретный</option>
-                      <option value="sick_leave">Больничный</option>
-                    </select>
-                  </div>
-                  <div style={{ height: '10px' }} />
-                  <div className="field">
-                    <label>
-                      <input type="checkbox" checked={formData.is_active} onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })} /> Активен
-                    </label>
-                  </div>
+                <div style={{ height: '10px' }} />
+                <div className="field">
+                  <label>Статус</label>
+                  <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}>
+                    <option value="employed">В штате</option>
+                    <option value="dismissed">Уволен</option>
+                    <option value="vacation">Отпуск</option>
+                    <option value="maternity">Декретный</option>
+                    <option value="sick_leave">Больничный</option>
+                  </select>
+                </div>
+                <div style={{ height: '10px' }} />
+                <div className="field">
+                  <label>
+                    <input type="checkbox" checked={formData.is_active} onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })} /> Активен
+                  </label>
+                </div>
                   <div style={{ height: '10px' }} />
                   <div className="field">
                     <label>Примечания</label>
@@ -558,9 +583,9 @@ const Personnel: React.FC = () => {
                       {editing ? 'Изменения сохранены.' : 'Сотрудник добавлен.'}
                     </div>
                   )}
-                  <div style={{ height: '16px' }} />
-                  <div className="actions">
-                    <button type="submit" className="btn primary">Сохранить</button>
+                <div style={{ height: '16px' }} />
+                <div className="actions">
+                  <button type="submit" className="btn primary">Сохранить</button>
                     <button type="button" className="btn" onClick={() => { setShowModal(false); setEditing(null); setFormError(null); }}>Отмена</button>
                   </div>
                 </form>

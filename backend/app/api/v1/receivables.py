@@ -223,6 +223,23 @@ def create_notification(receivable_id: int, notification: ReceivableNotification
     return db_notification
 
 
+@router.post("/{receivable_id}/notifications/mark-all-read")
+def mark_all_notifications_read(receivable_id: int, db: Session = Depends(get_db)):
+    """Пометить все уведомления по задолженности как прочитанные (используем is_sent как признак)."""
+    receivable = db.query(ReceivableModel).filter(ReceivableModel.id == receivable_id).first()
+    if not receivable:
+        raise HTTPException(status_code=404, detail="Задолженность не найдена")
+
+    now = datetime.utcnow()
+    q = db.query(ReceivableNotificationModel).filter(
+        ReceivableNotificationModel.receivable_id == receivable_id,
+        ReceivableNotificationModel.is_sent == False,  # noqa: E712
+    )
+    updated = q.update({"is_sent": True, "sent_at": now}, synchronize_session=False)
+    db.commit()
+    return {"status": "ok", "updated": updated}
+
+
 @router.post("/{receivable_id}/collection-action", response_model=CollectionAction)
 def create_collection_action(receivable_id: int, action: CollectionActionCreate, db: Session = Depends(get_db)):
     """Создать меру по взысканию"""

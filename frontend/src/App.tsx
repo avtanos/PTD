@@ -22,6 +22,7 @@ import Constructs from './pages/Constructs';
 import StandardRates from './pages/StandardRates';
 import ProjectDocumentation from './pages/ProjectDocumentation';
 import Npa from './pages/Npa';
+import LabTests from './pages/LabTests';
 // Import all stub pages
 import ExecutiveSurveys from './pages/ExecutiveSurveys';
 import WorkVolumes from './pages/WorkVolumes';
@@ -99,6 +100,7 @@ const App: React.FC = () => {
       case 'constructs': return <Constructs />;
       case 'standardrates': return <StandardRates />;
       case 'npa': return <Npa />;
+      case 'labtests': return <LabTests />;
       case 'projdocs': return <ProjectDocumentation />;
       case 'surveys': return <ExecutiveSurveys />;
       case 'volumes': return <WorkVolumes />;
@@ -165,6 +167,7 @@ const App: React.FC = () => {
         <div className="navGroup">Проекты и документы</div>
         <nav className="nav">
           <NavLink to="projects" icon="M10 4H4v6h6V4Zm10 0h-6v6h6V4ZM10 14H4v6h6v-6Zm10 0h-6v6h6v-6Z">Проекты</NavLink>
+          <NavLink to="labtests" icon="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2Zm-1 16H6V5h12v14ZM8 7h8v2H8V7Zm0 4h8v2H8v-2Zm0 4h6v2H8v-2Z">Лабораторные испытания</NavLink>
           <NavLink to="projdocs" icon="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6Zm1 7V3.5L19.5 9H15ZM8 13h8v-2H8v2Zm0 4h8v-2H8v2Z">Разрешительные документы</NavLink>
           <NavLink to="execdocs" icon="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6Zm1 7V3.5L19.5 9H15ZM8 13h8v-2H8v2Zm0 4h8v-2H8v2Z">Исполнительная документация</NavLink>
           <NavLink to="surveys" icon="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7Zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5Z">Исполнительные съемки</NavLink>

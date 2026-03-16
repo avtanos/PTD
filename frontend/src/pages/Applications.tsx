@@ -146,7 +146,8 @@ const Applications: React.FC = () => {
     project_id: '',
     status: '',
     application_type: '',
-    warehouse: '',
+    date_from: '',
+    date_to: '',
     search: '',
   });
   const [currentPage, setCurrentPage] = useState(1);
@@ -417,16 +418,22 @@ const Applications: React.FC = () => {
   };
 
   const filteredApplications = applications.filter((app) => {
+    if (filters.project_id && String(app.project_id) !== filters.project_id) return false;
     if (filters.status && app.status !== filters.status) return false;
     if (filters.application_type && app.application_type !== filters.application_type) return false;
-    if (filters.warehouse && app.warehouse !== filters.warehouse) return false;
+    if (filters.date_from) {
+      const from = new Date(filters.date_from);
+      const d = new Date(app.date);
+      if (d < from) return false;
+    }
+    if (filters.date_to) {
+      const to = new Date(filters.date_to);
+      const d = new Date(app.date);
+      if (d > to) return false;
+    }
     if (filters.search) {
       const search = filters.search.toLowerCase();
-      return (
-        app.number.toLowerCase().includes(search) ||
-        app.description?.toLowerCase().includes(search) ||
-        ''
-      );
+      return app.number.toLowerCase().includes(search);
     }
     return true;
   });
@@ -492,14 +499,20 @@ const Applications: React.FC = () => {
               <div className="filters">
                 <div className="field">
                   <label>Проект</label>
-                  <select value={filters.project_id} onChange={(e) => { setFilters({...filters, project_id: e.target.value}); setCurrentPage(1); }}>
+                  <select
+                    value={filters.project_id}
+                    onChange={(e) => { setFilters({ ...filters, project_id: e.target.value }); setCurrentPage(1); }}
+                  >
                     <option value="">Все</option>
                     {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                 </div>
                 <div className="field">
                   <label>Статус</label>
-                  <select value={filters.status} onChange={(e) => { setFilters({...filters, status: e.target.value}); setCurrentPage(1); }}>
+                  <select
+                    value={filters.status}
+                    onChange={(e) => { setFilters({ ...filters, status: e.target.value }); setCurrentPage(1); }}
+                  >
                     <option value="">Все</option>
                     <option value="draft">Черновик</option>
                     <option value="submitted">Подано</option>
@@ -511,7 +524,10 @@ const Applications: React.FC = () => {
                 </div>
                 <div className="field">
                   <label>Тип</label>
-                  <select value={filters.application_type} onChange={(e) => { setFilters({...filters, application_type: e.target.value}); setCurrentPage(1); }}>
+                  <select
+                    value={filters.application_type}
+                    onChange={(e) => { setFilters({ ...filters, application_type: e.target.value }); setCurrentPage(1); }}
+                  >
                     <option value="">Все</option>
                     <option value="materials">Материалы</option>
                     <option value="equipment">Оборудование</option>
@@ -520,12 +536,42 @@ const Applications: React.FC = () => {
                   </select>
                 </div>
                 <div className="field">
-                  <label>Поиск</label>
-                  <input type="text" placeholder="№, описание..." value={filters.search} onChange={(e) => { setFilters({...filters, search: e.target.value}); setCurrentPage(1); }} />
+                  <label>Период</label>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <input
+                      type="date"
+                      value={filters.date_from}
+                      onChange={(e) => { setFilters({ ...filters, date_from: e.target.value }); setCurrentPage(1); }}
+                    />
+                    <input
+                      type="date"
+                      value={filters.date_to}
+                      onChange={(e) => { setFilters({ ...filters, date_to: e.target.value }); setCurrentPage(1); }}
+                    />
+                  </div>
+                </div>
+                <div className="field">
+                  <label>Номер заявки</label>
+                  <input
+                    type="text"
+                    placeholder="Например: З-001/2024"
+                    value={filters.search}
+                    onChange={(e) => { setFilters({ ...filters, search: e.target.value }); setCurrentPage(1); }}
+                  />
                 </div>
               </div>
               <div className="actions">
-                <a className="btn small" href="#applications" onClick={(e) => { e.preventDefault(); setFilters({project_id: '', status: '', application_type: '', warehouse: '', search: ''}); setCurrentPage(1); }}>Сбросить</a>
+                <a
+                  className="btn small"
+                  href="#applications"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setFilters({ project_id: '', status: '', application_type: '', date_from: '', date_to: '', search: '' });
+                    setCurrentPage(1);
+                  }}
+                >
+                  Сбросить
+                </a>
               </div>
             </div>
 

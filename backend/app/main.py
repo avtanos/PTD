@@ -39,6 +39,7 @@ from app.models.document_roadmap import (
 )
 from app.models.document_notification import DocumentNotification
 from app.models.personnel import Personnel, ProjectPersonnel, PersonnelDocument, PersonnelHistory
+from app.models.lab_test import LabTest
 
 # Создание таблиц
 Base.metadata.create_all(bind=engine)
@@ -66,7 +67,7 @@ from app.api.v1 import (
     project_documentation, executive_surveys,
     work_volumes, project_changes, materials,
     application_workflow, document_versions, integration_1c,
-    estimate_validation, users, receivables, sales, document_roadmap, personnel
+    estimate_validation, users, receivables, sales, document_roadmap, personnel, lab_tests
 )
 
 app.include_router(projects.router, prefix="/api/v1/projects", tags=["Проекты"])
@@ -98,6 +99,7 @@ app.include_router(receivables.router, prefix="/api/v1/receivables", tags=["Де
 app.include_router(sales.router, prefix="/api/v1/sales", tags=["Отдел продаж"])
 app.include_router(document_roadmap.router, prefix="/api/v1/document-roadmap", tags=["Дорожная карта документов"])
 app.include_router(personnel.router, prefix="/api/v1/personnel", tags=["Кадры"])
+app.include_router(lab_tests.router, prefix="/api/v1/lab-tests", tags=["Лабораторные испытания"])
 
 
 @app.get("/")

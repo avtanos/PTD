@@ -100,6 +100,11 @@ const Npa: React.FC = () => {
   const [formDate, setFormDate] = useState('');
   const [formFile, setFormFile] = useState<File | null>(null);
   const [formSections, setFormSections] = useState<string[]>([]);
+  const [filters, setFilters] = useState({
+    section_code: '',
+    has_file: '',
+    search: '',
+  });
 
   const loadData = async () => {
     setLoading(true);
@@ -226,6 +231,22 @@ const Npa: React.FC = () => {
     }
   };
 
+  const filteredItems = items.filter((npa) => {
+    if (filters.section_code && !npa.section_codes.includes(filters.section_code)) return false;
+    if (filters.has_file === 'with' && !npa.file_name) return false;
+    if (filters.has_file === 'without' && npa.file_name) return false;
+    if (filters.search) {
+      const s = filters.search.toLowerCase();
+      if (
+        !npa.title.toLowerCase().includes(s) &&
+        !(npa.number || '').toLowerCase().includes(s)
+      ) {
+        return false;
+      }
+    }
+    return true;
+  });
+
   if (loading && items.length === 0) {
     return <div className="loading">Загрузка НПА...</div>;
   }
@@ -263,6 +284,45 @@ const Npa: React.FC = () => {
         </div>
       )}
 
+      <div className="toolbar" style={{ marginBottom: 12 }}>
+        <div className="filters">
+          <div className="field">
+            <label>Блок дорожной карты</label>
+            <select
+              value={filters.section_code}
+              onChange={(e) => setFilters({ ...filters, section_code: e.target.value })}
+            >
+              <option value="">Все</option>
+              {formSectionsList.map((s) => (
+                <option key={s.id} value={s.code}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label>Наличие файла</label>
+            <select
+              value={filters.has_file}
+              onChange={(e) => setFilters({ ...filters, has_file: e.target.value })}
+            >
+              <option value="">Все</option>
+              <option value="with">Только с файлом</option>
+              <option value="without">Только без файла</option>
+            </select>
+          </div>
+          <div className="field">
+            <label>Название / номер</label>
+            <input
+              type="text"
+              placeholder="Например: Градостроительный, ГК‑01"
+              value={filters.search}
+              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+            />
+          </div>
+        </div>
+      </div>
+
       <div className="table-container">
         <table className="data-table">
           <thead>
@@ -275,14 +335,14 @@ const Npa: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {items.length === 0 ? (
+            {filteredItems.length === 0 ? (
               <tr>
-                <td colSpan={4} style={{ textAlign: 'center', padding: '32px' }}>
+                <td colSpan={5} style={{ textAlign: 'center', padding: '32px' }}>
                   НПА пока не добавлены.
                 </td>
               </tr>
             ) : (
-              items.map((npa) => (
+              filteredItems.map((npa) => (
                 <tr key={npa.id}>
                   <td>
                     <div className="project-name">{npa.title}</div>
