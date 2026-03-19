@@ -1261,99 +1261,96 @@ const Applications: React.FC = () => {
             <div className="cardBody">
               <form onSubmit={handleSubmit}>
                 <div className="title" style={{ marginBottom: 12 }}>1. Общая информация</div>
-                <div className="field">
-                  <label>Проект *</label>
-                  <select name="project_id" value={formData.project_id} onChange={handleInputChange} required>
-                    <option value="">Выберите проект</option>
-                    {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                </div>
-                <div style={{ height: '10px' }} />
-                <div className="field">
-                  <label>Организация</label>
-                  <select name="organization_id" value={formData.organization_id} onChange={handleInputChange}>
-                    <option value="">—</option>
-                    {organizations.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                  </select>
-                </div>
-                <div style={{ height: '10px' }} />
-                <div className="field">
-                  <label>Тип заявки *</label>
-                  <select name="application_type" value={formData.application_type} onChange={handleInputChange} required>
-                    <option value="materials">Материалы</option>
-                    <option value="equipment">Оборудование</option>
-                    <option value="services">Услуги</option>
-                    <option value="other">Прочее</option>
-                  </select>
-                </div>
-                <div style={{ height: '10px' }} />
-                <div className="field">
-                  <label>Номер *</label>
-                  <input type="text" name="number" value={formData.number} onChange={handleInputChange} required />
-                </div>
-                <div style={{ height: '10px' }} />
-                <div className="field">
-                  <label>Старый номер</label>
-                  <input type="text" name="old_number" value={(formData as any).old_number} onChange={handleInputChange} />
-                </div>
-                <div style={{ height: '10px' }} />
-                <div className="field">
-                  <label>Дата *</label>
-                  <input type="date" name="date" value={formData.date} onChange={handleInputChange} required />
-                </div>
-                <div style={{ height: '10px' }} />
-                <div className="field">
-                  <label>Инициатор (поставщик/подрядчик)</label>
-                  <select name="initiator_counterparty_id" value={(formData as any).initiator_counterparty_id} onChange={handleInputChange}>
-                    <option value="">—</option>
-                    {counterparties.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </div>
-                <div style={{ height: '10px' }} />
-                <div className="field">
-                  <label>Подразделение (справочник)</label>
-                  <select name="department_id" value={formData.department_id} onChange={handleInputChange}>
-                    <option value="">—</option>
-                    {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                  </select>
-                </div>
-                <div style={{ height: '10px' }} />
-                <div className="field">
-                  <label>Склад</label>
-                  <select name="warehouse_id" value={formData.warehouse_id} onChange={handleInputChange}>
-                    <option value="">—</option>
-                    {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                  </select>
-                </div>
-                <div style={{ height: '10px' }} />
-                <div className="field">
-                  <label>Вид материала</label>
-                  <select name="material_kind_id" value={(formData as any).material_kind_id} onChange={handleInputChange}>
-                    <option value="">—</option>
-                    {materialKinds.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                  </select>
-                </div>
-                <div style={{ height: '10px' }} />
-                <div className="field">
-                  <label>Описание</label>
-                  <textarea name="description" value={formData.description} onChange={handleInputChange} />
-                </div>
-                <div style={{ height: '10px' }} />
-                <div className="field">
-                  <label>Основание</label>
-                  <textarea name="basis" value={(formData as any).basis} onChange={handleInputChange} />
-                </div>
-                <div style={{ height: '10px' }} />
-                <div className="field">
-                  <label>Статус</label>
-                  <select name="status" value={formData.status} onChange={handleInputChange}>
-                    <option value="draft">Черновик</option>
-                    <option value="submitted">Подано</option>
-                    <option value="in_process">В процессе</option>
-                    <option value="approved">Утверждено</option>
-                    <option value="rejected">Отклонено</option>
-                    <option value="completed">Завершено</option>
-                  </select>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div className="field">
+                    <label>Проект *</label>
+                    <select name="project_id" value={formData.project_id} onChange={handleInputChange} required>
+                      <option value="">Выберите проект</option>
+                      {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label>Организация</label>
+                    <select name="organization_id" value={formData.organization_id} onChange={handleInputChange}>
+                      <option value="">—</option>
+                      {organizations.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="field">
+                    <label>Тип заявки *</label>
+                    <select name="application_type" value={formData.application_type} onChange={handleInputChange} required>
+                      <option value="materials">Материалы</option>
+                      <option value="equipment">Оборудование</option>
+                      <option value="services">Услуги</option>
+                      <option value="other">Прочее</option>
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label>Номер *</label>
+                    <input type="text" name="number" value={formData.number} onChange={handleInputChange} required />
+                  </div>
+
+                  <div className="field">
+                    <label>Старый номер</label>
+                    <input type="text" name="old_number" value={(formData as any).old_number} onChange={handleInputChange} />
+                  </div>
+                  <div className="field">
+                    <label>Дата *</label>
+                    <input type="date" name="date" value={formData.date} onChange={handleInputChange} required />
+                  </div>
+
+                  <div className="field">
+                    <label>Инициатор (поставщик/подрядчик)</label>
+                    <select name="initiator_counterparty_id" value={(formData as any).initiator_counterparty_id} onChange={handleInputChange}>
+                      <option value="">—</option>
+                      {counterparties.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label>Подразделение (справочник)</label>
+                    <select name="department_id" value={formData.department_id} onChange={handleInputChange}>
+                      <option value="">—</option>
+                      {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="field">
+                    <label>Склад</label>
+                    <select name="warehouse_id" value={formData.warehouse_id} onChange={handleInputChange}>
+                      <option value="">—</option>
+                      {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label>Вид материала</label>
+                    <select name="material_kind_id" value={(formData as any).material_kind_id} onChange={handleInputChange}>
+                      <option value="">—</option>
+                      {materialKinds.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="field" style={{ gridColumn: '1 / -1' }}>
+                    <label>Описание</label>
+                    <textarea name="description" value={formData.description} onChange={handleInputChange} />
+                  </div>
+
+                  <div className="field" style={{ gridColumn: '1 / -1' }}>
+                    <label>Основание</label>
+                    <textarea name="basis" value={(formData as any).basis} onChange={handleInputChange} />
+                  </div>
+
+                  <div className="field" style={{ gridColumn: '1 / -1' }}>
+                    <label>Статус</label>
+                    <select name="status" value={formData.status} onChange={handleInputChange}>
+                      <option value="draft">Черновик</option>
+                      <option value="submitted">Подано</option>
+                      <option value="in_process">В процессе</option>
+                      <option value="approved">Утверждено</option>
+                      <option value="rejected">Отклонено</option>
+                      <option value="completed">Завершено</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div style={{ height: '20px' }} />
