@@ -12,9 +12,11 @@ interface Project {
 interface LabTestItem {
   id: number;
   project_id: number;
-  test_type: string;
+  test_type_id?: number | null;
+  test_type: string; // legacy fallback
   sample_description?: string | null;
-  lab_name?: string | null;
+  laboratory_id?: number | null;
+  lab_name?: string | null; // legacy fallback
   protocol_number?: string | null;
   protocol_date?: string | null;
   sample_date?: string | null;
@@ -41,8 +43,10 @@ const MOCK_TESTS: LabTestItem[] = [
   {
     id: 1,
     project_id: 1,
+    test_type_id: 1,
     test_type: 'Испытание бетона на прочность',
     sample_description: 'Кубики 150×150×150, партия Б-12',
+    laboratory_id: 1,
     lab_name: 'ООО «СтройЛаб»',
     protocol_number: 'ЛИ-001/2024',
     protocol_date: '2024-03-18',
@@ -55,8 +59,10 @@ const MOCK_TESTS: LabTestItem[] = [
   {
     id: 2,
     project_id: 1,
+    test_type_id: 2,
     test_type: 'Испытание грунта (плотность)',
     sample_description: 'Участок А‑3, песок средний',
+    laboratory_id: 2,
     lab_name: 'Гослаборатория',
     protocol_number: 'ЛИ-002/2024',
     protocol_date: '2024-03-22',
@@ -67,8 +73,10 @@ const MOCK_TESTS: LabTestItem[] = [
   {
     id: 3,
     project_id: 2,
+    test_type_id: 3,
     test_type: 'Контроль сварных соединений (УЗК)',
     sample_description: 'Ферма Ф‑2, швы №12‑18',
+    laboratory_id: 3,
     lab_name: 'ООО «Неразрушающий контроль»',
     protocol_number: 'УЗК-77',
     protocol_date: '2024-02-11',
@@ -81,6 +89,8 @@ const MOCK_TESTS: LabTestItem[] = [
 const LabTests: React.FC = () => {
   const [items, setItems] = useState<LabTestItem[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [testTypes, setTestTypes] = useState<{ id: number; name: string }[]>([]);
+  const [laboratories, setLaboratories] = useState<{ id: number; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -99,9 +109,9 @@ const LabTests: React.FC = () => {
 
   const [formData, setFormData] = useState({
     project_id: '' as number | '',
-    test_type: '',
+    test_type_id: '' as number | '',
     sample_description: '',
-    lab_name: '',
+    laboratory_id: '' as number | '',
     protocol_number: '',
     protocol_date: '',
     sample_date: '',
@@ -121,9 +131,23 @@ const LabTests: React.FC = () => {
         axios.get<LabTestItem[]>(`${API_URL}/lab-tests/`).catch(() => ({ data: [] as LabTestItem[] })),
         axios.get(`${API_URL}/projects/`).catch(() => ({ data: [] })),
       ]);
+      const [typesRes, labsRes] = await Promise.all([
+        axios.get(`${API_URL}/lab-tests/refs/test-types`).catch(() => ({ data: [] })),
+        axios.get(`${API_URL}/lab-tests/refs/laboratories`).catch(() => ({ data: [] })),
+      ]);
 
       const tests = Array.isArray(testsRes.data) ? testsRes.data : [];
       setItems(tests.length > 0 ? tests : MOCK_TESTS);
+      setTestTypes(Array.isArray(typesRes.data) && typesRes.data.length ? typesRes.data : [
+        { id: 1, name: 'Испытание бетона на прочность' },
+        { id: 2, name: 'Испытание грунта (плотность)' },
+        { id: 3, name: 'Контроль сварных соединений (УЗК)' },
+      ]);
+      setLaboratories(Array.isArray(labsRes.data) && labsRes.data.length ? labsRes.data : [
+        { id: 1, name: 'ООО «СтройЛаб»' },
+        { id: 2, name: 'Гослаборатория' },
+        { id: 3, name: 'ООО «Неразрушающий контроль»' },
+      ]);
 
       let projList: Project[] = [];
       if (projRes.data?.data && Array.isArray(projRes.data.data)) projList = projRes.data.data;
@@ -169,9 +193,9 @@ const LabTests: React.FC = () => {
     setFormFile(null);
     setFormData({
       project_id: '',
-      test_type: '',
+      test_type_id: '',
       sample_description: '',
-      lab_name: '',
+      laboratory_id: '',
       protocol_number: '',
       protocol_date: '',
       sample_date: '',
@@ -192,9 +216,9 @@ const LabTests: React.FC = () => {
     setFormFile(null);
     setFormData({
       project_id: t.project_id,
-      test_type: t.test_type || '',
+      test_type_id: t.test_type_id ?? '',
       sample_description: t.sample_description || '',
-      lab_name: t.lab_name || '',
+      laboratory_id: t.laboratory_id ?? '',
       protocol_number: t.protocol_number || '',
       protocol_date: t.protocol_date ? t.protocol_date.slice(0, 10) : '',
       sample_date: t.sample_date ? t.sample_date.slice(0, 10) : '',
@@ -208,7 +232,7 @@ const LabTests: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.project_id || !formData.test_type.trim()) {
+    if (!formData.project_id || !formData.test_type_id) {
       setError('Заполните проект и вид испытания.');
       return;
     }
@@ -218,8 +242,11 @@ const LabTests: React.FC = () => {
       const payload = {
         ...formData,
         project_id: Number(formData.project_id),
+        test_type_id: Number(formData.test_type_id),
+        test_type: testTypes.find(t => t.id === Number(formData.test_type_id))?.name || '—',
         sample_description: formData.sample_description.trim() || null,
-        lab_name: formData.lab_name.trim() || null,
+        laboratory_id: formData.laboratory_id ? Number(formData.laboratory_id) : null,
+        lab_name: laboratories.find(l => l.id === Number(formData.laboratory_id))?.name || null,
         protocol_number: formData.protocol_number.trim() || null,
         protocol_date: formData.protocol_date || null,
         sample_date: formData.sample_date || null,
@@ -393,7 +420,16 @@ const LabTests: React.FC = () => {
                 </div>
                 <div className="field">
                   <label>Вид испытания *</label>
-                  <input value={formData.test_type} onChange={(e) => setFormData({ ...formData, test_type: e.target.value })} required />
+                  <select
+                    value={formData.test_type_id}
+                    onChange={(e) => setFormData({ ...formData, test_type_id: e.target.value ? Number(e.target.value) : '' })}
+                    required
+                  >
+                    <option value="">Выберите вид</option>
+                    {testTypes.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="fieldRow">
                   <div className="field">
@@ -418,7 +454,15 @@ const LabTests: React.FC = () => {
                 <div className="fieldRow">
                   <div className="field">
                     <label>Лаборатория</label>
-                    <input value={formData.lab_name} onChange={(e) => setFormData({ ...formData, lab_name: e.target.value })} />
+                    <select
+                      value={formData.laboratory_id}
+                      onChange={(e) => setFormData({ ...formData, laboratory_id: e.target.value ? Number(e.target.value) : '' })}
+                    >
+                      <option value="">—</option>
+                      {laboratories.map((l) => (
+                        <option key={l.id} value={l.id}>{l.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="field">
                     <label>Результат</label>

@@ -292,39 +292,39 @@ const Personnel: React.FC = () => {
               <div className="filters">
                 <div className="field">
                   <label>ФИО / таб. №</label>
-                  <input
-                    type="text"
+              <input
+                type="text"
                     placeholder="Например: Иванов"
-                    value={filters.search}
-                    onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                value={filters.search}
+                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                     style={{ maxWidth: '260px' }}
-                  />
+              />
                 </div>
                 <div className="field">
                   <label>Подразделение</label>
-                  <select
-                    value={filters.department_id}
-                    onChange={(e) => setFilters({ ...filters, department_id: e.target.value })}
-                  >
+              <select
+                value={filters.department_id}
+                onChange={(e) => setFilters({ ...filters, department_id: e.target.value })}
+              >
                     <option value="">Все</option>
-                    {departments.map((d) => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
-                    ))}
-                  </select>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
                 </div>
                 <div className="field">
                   <label>Статус</label>
-                  <select
-                    value={filters.status}
-                    onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                  >
+              <select
+                value={filters.status}
+                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+              >
                     <option value="">Все</option>
-                    <option value="employed">В штате</option>
-                    <option value="dismissed">Уволен</option>
-                    <option value="vacation">Отпуск</option>
-                    <option value="maternity">Декретный</option>
-                    <option value="sick_leave">Больничный</option>
-                  </select>
+                <option value="employed">В штате</option>
+                <option value="dismissed">Уволен</option>
+                <option value="vacation">Отпуск</option>
+                <option value="maternity">Декретный</option>
+                <option value="sick_leave">Больничный</option>
+              </select>
                 </div>
                 <div className="field">
                   <label>Должность</label>
@@ -537,8 +537,8 @@ const Personnel: React.FC = () => {
                   </div>
                   <div style={{ height: '10px' }} />
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
-                    <div className="field">
-                      <label>Телефон</label>
+                  <div className="field">
+                    <label>Телефон</label>
                       <input type="text" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="+7 (___) ___-__-__" />
                   </div>
                   <div className="field">
@@ -550,7 +550,7 @@ const Personnel: React.FC = () => {
                   <div className="field">
                     <label>ИНН</label>
                     <input type="text" value={formData.inn} onChange={(e) => setFormData({ ...formData, inn: e.target.value })} placeholder="10 или 12 цифр" maxLength={12} />
-                  </div>
+                </div>
                 <div style={{ height: '10px' }} />
                 <div className="field">
                   <label>Статус</label>

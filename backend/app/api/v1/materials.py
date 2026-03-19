@@ -6,12 +6,90 @@ from app.db.database import get_db
 from app.models.material import (
     Material as MaterialModel, Warehouse as WarehouseModel,
     WarehouseStock as WarehouseStockModel, MaterialMovement as MaterialMovementModel,
-    MaterialWriteOff as MaterialWriteOffModel, MaterialWriteOffItem as MaterialWriteOffItemModel
+    MaterialWriteOff as MaterialWriteOffModel, MaterialWriteOffItem as MaterialWriteOffItemModel,
+    MaterialTypeRef as MaterialTypeRefModel
 )
 from pydantic import BaseModel
 from datetime import date, datetime
 
 router = APIRouter()
+
+class MaterialTypeRefBase(BaseModel):
+    code: str
+    name: str
+    description: Optional[str] = None
+    is_active: bool = True
+
+
+class MaterialTypeRefCreate(MaterialTypeRefBase):
+    pass
+
+
+class MaterialTypeRefUpdate(BaseModel):
+    code: Optional[str] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class MaterialTypeRef(MaterialTypeRefBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+@router.get("/material-types/", response_model=List[MaterialTypeRef])
+def list_material_types(db: Session = Depends(get_db)):
+    q = db.query(MaterialTypeRefModel).filter(MaterialTypeRefModel.is_active == True).order_by(MaterialTypeRefModel.name)  # noqa: E712
+    rows = q.all()
+    # авто-сид (если справочник пустой) — коды должны совпадать с MaterialType enum
+    if not rows:
+        defaults = [
+            {"code": "construction", "name": "Строительные материалы"},
+            {"code": "equipment", "name": "Оборудование"},
+            {"code": "tools", "name": "Инструменты"},
+            {"code": "consumables", "name": "Расходные материалы"},
+            {"code": "other", "name": "Прочее"},
+        ]
+        for d in defaults:
+            db.add(MaterialTypeRefModel(**d, is_active=True))
+        db.commit()
+        rows = q.all()
+    return rows
+
+
+@router.post("/material-types/", response_model=MaterialTypeRef)
+def create_material_type(payload: MaterialTypeRefCreate, db: Session = Depends(get_db)):
+    row = MaterialTypeRefModel(**payload.model_dump())
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+@router.put("/material-types/{type_id}", response_model=MaterialTypeRef)
+def update_material_type(type_id: int, payload: MaterialTypeRefUpdate, db: Session = Depends(get_db)):
+    row = db.query(MaterialTypeRefModel).filter(MaterialTypeRefModel.id == type_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Тип материала не найден")
+    data = payload.model_dump(exclude_unset=True)
+    for k, v in data.items():
+        setattr(row, k, v)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+@router.delete("/material-types/{type_id}")
+def delete_material_type(type_id: int, db: Session = Depends(get_db)):
+    row = db.query(MaterialTypeRefModel).filter(MaterialTypeRefModel.id == type_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Тип материала не найден")
+    row.is_active = False
+    db.commit()
+    return {"status": "ok"}
 
 
 # Material schemas

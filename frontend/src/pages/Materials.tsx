@@ -80,13 +80,27 @@ interface Project {
   name: string;
 }
 
+interface MaterialTypeRef {
+  id: number;
+  code: string;
+  name: string;
+}
+
 // MOCK DATA
 const MOCK_MATERIALS: Material[] = [
-  { id: 1, code: 'MAT-001', name: 'Цемент М500', material_type: 'material', unit: 'кг', standard_price: 8.50, is_active: true },
-  { id: 2, code: 'MAT-002', name: 'Арматура А500С d12', material_type: 'material', unit: 'т', standard_price: 45000.00, is_active: true },
-  { id: 3, code: 'MAT-003', name: 'Кирпич красный', material_type: 'material', unit: 'шт', standard_price: 15.00, is_active: true },
-  { id: 4, code: 'TOOL-001', name: 'Перфоратор Bosch', material_type: 'tool', unit: 'шт', standard_price: 12000.00, is_active: true },
+  { id: 1, code: 'MAT-001', name: 'Цемент М500', material_type: 'construction', unit: 'кг', standard_price: 8.50, is_active: true },
+  { id: 2, code: 'MAT-002', name: 'Арматура А500С d12', material_type: 'construction', unit: 'т', standard_price: 45000.00, is_active: true },
+  { id: 3, code: 'MAT-003', name: 'Кирпич красный', material_type: 'construction', unit: 'шт', standard_price: 15.00, is_active: true },
+  { id: 4, code: 'TOOL-001', name: 'Перфоратор Bosch', material_type: 'tools', unit: 'шт', standard_price: 12000.00, is_active: true },
   { id: 5, code: 'EQP-001', name: 'Бетономешалка 180л', material_type: 'equipment', unit: 'шт', standard_price: 25000.00, is_active: true },
+];
+
+const MOCK_MATERIAL_TYPES: MaterialTypeRef[] = [
+  { id: 1, code: 'construction', name: 'Строительные материалы' },
+  { id: 2, code: 'equipment', name: 'Оборудование' },
+  { id: 3, code: 'tools', name: 'Инструменты' },
+  { id: 4, code: 'consumables', name: 'Расходные материалы' },
+  { id: 5, code: 'other', name: 'Прочее' },
 ];
 
 const MOCK_WAREHOUSES: Warehouse[] = [
@@ -118,6 +132,7 @@ const Materials: React.FC = () => {
   const [movements, setMovements] = useState<MaterialMovement[]>([]);
   const [writeOffs, setWriteOffs] = useState<MaterialWriteOff[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [materialTypes, setMaterialTypes] = useState<MaterialTypeRef[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'materials' | 'warehouses' | 'stock' | 'movements' | 'writeoffs'>('materials');
   const [selectedWarehouse, setSelectedWarehouse] = useState<number | ''>('');
@@ -127,11 +142,16 @@ const Materials: React.FC = () => {
   const [showWriteOffModal, setShowWriteOffModal] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [editingWarehouse, setEditingWarehouse] = useState<Warehouse | null>(null);
-  const [materialForm, setMaterialForm] = useState({ code: '', name: '', material_type: 'material', unit: 'шт', specification: '', standard_price: '', notes: '', is_active: true });
+  const [materialForm, setMaterialForm] = useState({ code: '', name: '', material_type: 'construction', unit: 'шт', specification: '', standard_price: '', notes: '', is_active: true });
   const [warehouseForm, setWarehouseForm] = useState({ code: '', name: '', location: '', responsible: '', notes: '', is_active: true });
   const [movementForm, setMovementForm] = useState({ movement_type: 'receipt', movement_number: '', movement_date: new Date().toISOString().split('T')[0], material_id: '' as number | '', quantity: '', price: '', from_warehouse_id: '' as number | '', to_warehouse_id: '' as number | '', project_id: '' as number | '', supplier: '', batch_number: '', responsible: '', notes: '' });
   const [writeOffForm, setWriteOffForm] = useState({ write_off_number: '', write_off_date: new Date().toISOString().split('T')[0], project_id: '' as number | '', warehouse_id: '' as number | '', reason: '', description: '', responsible: '', approved_by: '', notes: '', items: [] as MaterialWriteOffItem[] });
   const [filters, setFilters] = useState({ search: '', material_type: '', warehouse_id: '' as number | '' });
+  const [stockMaterialFilter, setStockMaterialFilter] = useState<number | ''>('');
+  const [movementFilters, setMovementFilters] = useState({
+    movement_type: '',
+    project_id: '' as number | '',
+  });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(20);
 
@@ -144,10 +164,11 @@ const Materials: React.FC = () => {
       setLoading(true);
       
       // Параллельная загрузка базовых справочников
-      const [matRes, whRes, projRes] = await Promise.all([
+      const [matRes, whRes, projRes, typesRes] = await Promise.all([
         axios.get(`${API_URL}/materials/materials/`).catch(() => ({ data: MOCK_MATERIALS })),
         axios.get(`${API_URL}/materials/warehouses/`).catch(() => ({ data: MOCK_WAREHOUSES })),
         axios.get(`${API_URL}/projects/`).catch(() => ({ data: [] })),
+        axios.get(`${API_URL}/materials/material-types/`).catch(() => ({ data: [] })),
       ]);
 
       const materialsData = Array.isArray(matRes.data) && matRes.data.length > 0 ? matRes.data : MOCK_MATERIALS;
@@ -155,6 +176,7 @@ const Materials: React.FC = () => {
       
       setMaterials(materialsData);
       setWarehouses(warehousesData);
+      setMaterialTypes(Array.isArray(typesRes.data) && typesRes.data.length ? typesRes.data : MOCK_MATERIAL_TYPES);
       
       // Обработка данных проектов (может быть пагинация)
       let projectsData: Project[] = [];
@@ -347,7 +369,7 @@ const Materials: React.FC = () => {
           <p className="h2">Справочник материалов • склады • остатки • движение • списание • связь с проектами/заявками.</p>
         </div>
         <div className="actions">
-          <a className="btn primary" href="#materials" onClick={(e) => { e.preventDefault(); setShowMaterialModal(true); setEditingMaterial(null); setMaterialForm({ code: '', name: '', material_type: 'material', unit: 'шт', specification: '', standard_price: '', notes: '', is_active: true }); }}>+ Материал</a>
+          <a className="btn primary" href="#materials" onClick={(e) => { e.preventDefault(); setShowMaterialModal(true); setEditingMaterial(null); setMaterialForm({ code: '', name: '', material_type: 'construction', unit: 'шт', specification: '', standard_price: '', notes: '', is_active: true }); }}>+ Материал</a>
           <a className="btn" href="#materials" onClick={(e) => { e.preventDefault(); setShowWarehouseModal(true); setEditingWarehouse(null); setWarehouseForm({ code: '', name: '', location: '', responsible: '', notes: '', is_active: true }); }}>+ Склад</a>
         </div>
       </div>
@@ -380,9 +402,7 @@ const Materials: React.FC = () => {
                     <label>Тип</label>
                     <select value={filters.material_type} onChange={(e) => setFilters({...filters, material_type: e.target.value})}>
                       <option value="">Все</option>
-                      <option value="material">material</option>
-                      <option value="equipment">equipment</option>
-                      <option value="tool">tool</option>
+                      {materialTypes.map(t => <option key={t.id} value={t.code}>{t.name}</option>)}
                     </select>
                   </div>
                 </div>
@@ -408,7 +428,7 @@ const Materials: React.FC = () => {
                       <tr key={m.id}>
                         <td>{m.code}</td>
                         <td>{m.name}</td>
-                        <td>{m.material_type}</td>
+                        <td>{materialTypes.find(t => t.code === m.material_type)?.name || m.material_type}</td>
                         <td>{m.unit}</td>
                         <td className="tRight">{m.standard_price ? formatCurrencySimple(m.standard_price, 'KGS') : '—'}</td>
                         <td className="tRight">
@@ -467,12 +487,28 @@ const Materials: React.FC = () => {
           {activeTab === 'stock' && (
             <>
               <div className="toolbar" style={{ marginTop: '10px' }}>
-                <div className="field">
-                  <label>Склад</label>
-                  <select value={selectedWarehouse} onChange={(e) => { setSelectedWarehouse(e.target.value ? parseInt(e.target.value) : ''); fetchData(); }}>
-                    <option value="">Выберите склад</option>
-                    {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                  </select>
+                <div className="filters">
+                  <div className="field">
+                    <label>Склад</label>
+                    <select value={selectedWarehouse} onChange={(e) => { setSelectedWarehouse(e.target.value ? parseInt(e.target.value) : ''); fetchData(); }}>
+                      <option value="">Выберите склад</option>
+                      {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label>Материал</label>
+                    <select
+                      value={stockMaterialFilter}
+                      onChange={(e) => setStockMaterialFilter(e.target.value ? parseInt(e.target.value) : '')}
+                    >
+                      <option value="">Все материалы</option>
+                      {materials.map(m => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({m.code})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
               {selectedWarehouse ? (
@@ -487,20 +523,24 @@ const Materials: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {stocks.length === 0 ? (
+                    {stocks
+                      .filter(s => !stockMaterialFilter || s.material_id === stockMaterialFilter)
+                      .length === 0 ? (
                       <tr>
                         <td colSpan={5} style={{ textAlign: 'center', padding: '40px' }}>Остатки не найдены</td>
                       </tr>
                     ) : (
-                      stocks.map((s) => (
-                        <tr key={s.id}>
-                          <td>{s.material?.name || `ID: ${s.material_id}`}</td>
-                          <td>{s.material?.unit || '—'}</td>
-                          <td className="tRight">{s.quantity}</td>
-                          <td className="tRight">{s.reserved_quantity}</td>
-                          <td className="tRight">{s.quantity - s.reserved_quantity}</td>
-                        </tr>
-                      ))
+                      stocks
+                        .filter(s => !stockMaterialFilter || s.material_id === stockMaterialFilter)
+                        .map((s) => (
+                          <tr key={s.id}>
+                            <td>{s.material?.name || `ID: ${s.material_id}`}</td>
+                            <td>{s.material?.unit || '—'}</td>
+                            <td className="tRight">{s.quantity}</td>
+                            <td className="tRight">{s.reserved_quantity}</td>
+                            <td className="tRight">{s.quantity - s.reserved_quantity}</td>
+                          </tr>
+                        ))
                     )}
                   </tbody>
                 </table>
@@ -514,20 +554,59 @@ const Materials: React.FC = () => {
             <>
               <div className="toolbar" style={{ marginTop: '10px' }}>
                 <div className="filters">
-                   <div className="field">
+                  <div className="field">
                     <label>Склад</label>
-                    <select value={selectedWarehouse} onChange={(e) => { setSelectedWarehouse(e.target.value ? parseInt(e.target.value) : ''); fetchData(); }}>
+                    <select
+                      value={selectedWarehouse}
+                      onChange={(e) => { setSelectedWarehouse(e.target.value ? parseInt(e.target.value) : ''); fetchData(); }}
+                    >
                       <option value="">Все склады</option>
                       {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                     </select>
                   </div>
+                  <div className="field">
+                    <label>Тип движения</label>
+                    <select
+                      value={movementFilters.movement_type}
+                      onChange={(e) => setMovementFilters({ ...movementFilters, movement_type: e.target.value })}
+                    >
+                      <option value="">Все</option>
+                      <option value="receipt">Приход</option>
+                      <option value="expense">Расход</option>
+                      <option value="transfer">Перемещение</option>
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label>Проект</label>
+                    <select
+                      value={movementFilters.project_id}
+                      onChange={(e) => setMovementFilters({ ...movementFilters, project_id: e.target.value ? parseInt(e.target.value) : '' })}
+                    >
+                      <option value="">Все</option>
+                      {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </div>
                 </div>
                 <div className="actions">
-                    <a className="btn primary" href="#materials" onClick={(e) => { e.preventDefault(); setShowMovementModal(true); }}>+ Создать движение</a>
+                  <a
+                    className="btn primary"
+                    href="#materials"
+                    onClick={(e) => { e.preventDefault(); setShowMovementModal(true); }}
+                  >
+                    + Создать движение
+                  </a>
                 </div>
               </div>
-              
-              <table>
+
+              {(() => {
+                const filteredMovements = movements.filter((m) => {
+                  if (movementFilters.movement_type && m.movement_type !== movementFilters.movement_type) return false;
+                  if (movementFilters.project_id && m.project_id !== movementFilters.project_id) return false;
+                  return true;
+                });
+
+                return (
+                  <table>
                 <thead>
                   <tr>
                     <th style={{ width: '12%' }}>Дата</th>
@@ -540,12 +619,12 @@ const Materials: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {movements.length === 0 ? (
+                  {filteredMovements.length === 0 ? (
                     <tr>
                       <td colSpan={7} style={{ textAlign: 'center', padding: '40px' }}>Движений не найдено</td>
                     </tr>
                   ) : (
-                    movements.map((m) => (
+                    filteredMovements.map((m) => (
                       <tr key={m.id}>
                         <td>{new Date(m.movement_date).toLocaleDateString('ru-RU')}</td>
                         <td>{m.movement_number}</td>
@@ -587,6 +666,8 @@ const Materials: React.FC = () => {
                   )}
                 </tbody>
               </table>
+                );
+              })()}
             </>
           )}
 
@@ -734,12 +815,15 @@ const Materials: React.FC = () => {
             <div className="cardBody">
               <form onSubmit={handleMovementSubmit}>
                 <div className="field">
-                  <label>Тип движения *</label>
+                  <label>Тип / статус движения *</label>
                   <select value={movementForm.movement_type} onChange={(e) => setMovementForm({...movementForm, movement_type: e.target.value})} required>
                     <option value="receipt">Приход</option>
                     <option value="expense">Расход</option>
                     <option value="transfer">Перемещение</option>
                   </select>
+                  <div className="mini muted" style={{ marginTop: 4 }}>
+                    Приход увеличивает остаток на складе, расход уменьшает, перемещение переносит между складами.
+                  </div>
                 </div>
                 <div style={{ height: '10px' }} />
                 <div className="field">

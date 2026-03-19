@@ -14,6 +14,18 @@ class MaterialType(str, enum.Enum):
     OTHER = "other"  # Прочее
 
 
+class MaterialTypeRef(Base):
+    """Справочник типов материалов (для отображения/выбора в UI)."""
+    __tablename__ = "material_type_refs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(80), unique=True, index=True, nullable=False)
+    name = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 class MovementType(str, enum.Enum):
     """Типы движения материалов"""
     RECEIPT = "receipt"  # Поступление
