@@ -3,6 +3,7 @@ import axios from 'axios';
 import API_URL from '../utils/api';
 import { handleApiError, showError } from '../utils/errorHandler';
 import { validateForm, projectValidationRules } from '../utils/validation';
+import RoadmapDiagramEmbed from '../components/RoadmapDiagramEmbed';
 
 interface Project {
   id: number;
@@ -90,6 +91,52 @@ const MOCK_PROJECTS: Project[] = [
     is_active: true,
     created_at: '2024-04-15',
   },
+  {
+    id: 13,
+    name: 'Строительство детского сада',
+    code: 'PRJ-013',
+    address: 'ул. Детская, 7',
+    customer: 'Министерство образования',
+    contractor: 'ООО "ДетСтрой"',
+    description: 'Строительство нового детского сада на 120 мест с благоустройством территории',
+    work_type: 'Монолитные работы',
+    department_id: 1,
+    start_date: '2024-06-01',
+    end_date: '2025-09-30',
+    status: 'active',
+    is_active: true,
+    created_at: '2024-05-20',
+  },
+];
+
+const MOCK_APPLICATIONS_PROJECT_13 = [
+  { id: 101, number: 'З-013/001', date: '2024-06-15', application_type: 'materials', status: 'approved', total_amount: 2500000 },
+  { id: 102, number: 'З-013/002', date: '2024-07-20', application_type: 'equipment', status: 'in_process', total_amount: 1800000 },
+  { id: 103, number: 'З-013/003', date: '2024-08-10', application_type: 'materials', status: 'submitted', total_amount: 920000 },
+];
+
+const MOCK_CONTRACTS_PROJECT_13 = [
+  { id: 201, contract_number: 'Д-013/2024', contractor_name: 'ООО "ДетСтрой"', total_amount: 85000000, status: 'active' },
+  { id: 202, contract_number: 'Д-013-С/2024', contractor_name: 'ООО "СантехМонтаж"', total_amount: 4500000, status: 'active' },
+];
+
+const MOCK_ESTIMATES_PROJECT_13 = [
+  { id: 301, number: 'СМР-013', date: '2024-05-25', name: 'Смета на общестроительные работы', total_amount: 62000000 },
+  { id: 302, number: 'СМР-013-ОС', date: '2024-06-01', name: 'Смета на отделочные работы', total_amount: 18500000 },
+  { id: 303, number: 'СМР-013-Б', date: '2024-06-10', name: 'Смета на благоустройство', total_amount: 4500000 },
+];
+
+const MOCK_NPA_PROJECT_13 = [
+  { id: 1, name: 'СП 118.13330.2012 Общественные здания', number: '118.13330.2012', date: '2012-12-29' },
+  { id: 2, name: 'СанПиН 2.4.1.3049-13 Требования к устройству ДОУ', number: '2.4.1.3049-13', date: '2013-05-15' },
+  { id: 3, name: 'СП 158.13330.2014 Здания и помещения дошкольных организаций', number: '158.13330.2014', date: '2014-12-23' },
+];
+
+const MOCK_PERSONNEL_PROJECT_13 = [
+  { id: 1, full_name: 'Иванов Иван Иванович', position: 'Руководитель проекта', hire_date: '2024-05-15' },
+  { id: 2, full_name: 'Петров Петр Петрович', position: 'Главный инженер', hire_date: '2024-05-20' },
+  { id: 3, full_name: 'Сидорова Анна Сергеевна', position: 'Инженер ПТО', hire_date: '2024-06-01' },
+  { id: 4, full_name: 'Козлов Алексей Викторович', position: 'Прораб', hire_date: '2024-06-10' },
 ];
 
 const Projects: React.FC = () => {
@@ -128,6 +175,11 @@ const Projects: React.FC = () => {
   const [pageSize] = useState(20);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [activeProjectTab, setActiveProjectTab] = useState<'general' | 'applications' | 'contracts' | 'estimates' | 'roadmap' | 'npa' | 'personnel'>('general');
+  const [projectApplications, setProjectApplications] = useState<any[]>([]);
+  const [projectContracts, setProjectContracts] = useState<any[]>([]);
+  const [projectEstimates, setProjectEstimates] = useState<any[]>([]);
 
   // Загрузка подразделений (один раз при монтировании)
   useEffect(() => {
@@ -163,18 +215,23 @@ const Projects: React.FC = () => {
       
       // Обрабатываем новый формат ответа с метаданными
       if (response.data && response.data.data && Array.isArray(response.data.data)) {
-        // Новый формат с метаданными
-        const projectsData = response.data.data;
+        let projectsData = response.data.data;
+        if (!projectsData.some((p: Project) => p.id === 13)) {
+          projectsData = [...projectsData, MOCK_PROJECTS.find(p => p.id === 13)!].filter(Boolean);
+        }
         setProjects(projectsData);
         if (response.data.meta) {
-          setTotal(response.data.meta.total);
+          setTotal(Math.max(response.data.meta.total, projectsData.length));
           setTotalPages(response.data.meta.total_pages);
         }
       } else if (Array.isArray(response.data)) {
-        // Fallback для старого формата
-        setProjects(response.data);
-        setTotal(response.data.length);
-        setTotalPages(Math.ceil(response.data.length / pageSize));
+        let projectsData = response.data;
+        if (!projectsData.some((p: Project) => p.id === 13)) {
+          projectsData = [...projectsData, MOCK_PROJECTS.find(p => p.id === 13)!].filter(Boolean);
+        }
+        setProjects(projectsData);
+        setTotal(projectsData.length);
+        setTotalPages(Math.ceil(projectsData.length / pageSize));
       } else {
         console.warn('Projects: Неожиданный формат ответа', response.data);
         setProjects(MOCK_PROJECTS);
@@ -194,6 +251,35 @@ const Projects: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Загрузка данных по выбранному проекту для вкладок карточки
+  useEffect(() => {
+    if (!selectedProject?.id) return;
+    const isProject13 = selectedProject.id === 13;
+    const loadProjectData = async () => {
+      try {
+        if (activeProjectTab === 'applications') {
+          const r = await axios.get(`${API_URL}/applications/?project_id=${selectedProject.id}&limit=50`).catch(() => ({ data: [] }));
+          const data = Array.isArray(r.data) ? r.data : r.data?.data ?? [];
+          setProjectApplications(isProject13 && data.length === 0 ? MOCK_APPLICATIONS_PROJECT_13 : data);
+        } else if (activeProjectTab === 'contracts') {
+          const r = await axios.get(`${API_URL}/contracts/?project_id=${selectedProject.id}&limit=50`).catch(() => ({ data: [] }));
+          const data = Array.isArray(r.data) ? r.data : r.data?.data ?? [];
+          setProjectContracts(isProject13 && data.length === 0 ? MOCK_CONTRACTS_PROJECT_13 : data);
+        } else if (activeProjectTab === 'estimates') {
+          const r = await axios.get(`${API_URL}/estimates/?project_id=${selectedProject.id}&limit=50`).catch(() => ({ data: [] }));
+          const data = Array.isArray(r.data) ? r.data : r.data?.data ?? [];
+          setProjectEstimates(isProject13 && data.length === 0 ? MOCK_ESTIMATES_PROJECT_13 : data);
+        }
+      } catch (err) {
+        console.error('Ошибка загрузки данных проекта:', err);
+        if (activeProjectTab === 'applications') setProjectApplications(isProject13 ? MOCK_APPLICATIONS_PROJECT_13 : []);
+        if (activeProjectTab === 'contracts') setProjectContracts(isProject13 ? MOCK_CONTRACTS_PROJECT_13 : []);
+        if (activeProjectTab === 'estimates') setProjectEstimates(isProject13 ? MOCK_ESTIMATES_PROJECT_13 : []);
+      }
+    };
+    loadProjectData();
+  }, [selectedProject?.id, activeProjectTab]);
 
   // Перезагрузка при изменении фильтров или страницы
   useEffect(() => {
@@ -320,6 +406,9 @@ const Projects: React.FC = () => {
       handleCloseModal();
       // Перезагружаем данные для синхронизации
       await fetchData();
+      if (editingProject && selectedProject?.id === editingProject.id && response?.data) {
+        setSelectedProject(Array.isArray(response.data) ? response.data[0] : response.data);
+      }
     } catch (err: any) {
       console.error('Ошибка сохранения проекта:', err);
       const errorState = handleApiError(err);
@@ -579,7 +668,8 @@ const Projects: React.FC = () => {
                           <span className={`chip ${getStatusChip(p.status)}`}>{getStatusLabel(p.status || 'draft')}</span>
                         </td>
                         <td className="tRight" style={{ padding: '12px', display: 'table-cell', textAlign: 'right' }}>
-                          <a className="btn small" href={`#projects?id=${p.id}`} onClick={(e) => { e.preventDefault(); handleOpenModal(p); }}>Открыть</a>
+                          <a className="btn small" href={`#projects?id=${p.id}`} onClick={(e) => { e.preventDefault(); setSelectedProject(p); setActiveProjectTab('general'); }}>Карточка</a>
+                          <a className="btn small" href="#projects" onClick={(e) => { e.preventDefault(); handleOpenModal(p); }}>Ред.</a>
                           <a className="btn small danger" href="#projects" onClick={(e) => { e.preventDefault(); setDeletingProject(p); setShowDeleteModal(true); }}>Уд.</a>
                         </td>
                       </tr>
@@ -617,6 +707,154 @@ const Projects: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {selectedProject && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, padding: '20px', overflowY: 'auto' }} onClick={() => setSelectedProject(null)}>
+          <div className="card" style={{ maxWidth: '900px', width: '100%', margin: '20px 0', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
+            <div className="cardHead" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+              <div>
+                <div className="title">Карточка проекта: {selectedProject.name}</div>
+                <div className="desc" style={{ fontSize: '13px', color: 'var(--muted)' }}>
+                  {selectedProject.code && `${selectedProject.code} • `}
+                  {selectedProject.customer || '—'} • {getStatusLabel(selectedProject.status)}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span className={`chip ${getStatusChip(selectedProject.status)}`}>{getStatusLabel(selectedProject.status)}</span>
+                <a className="btn small" href="#projects" onClick={(e) => { e.preventDefault(); setSelectedProject(null); handleOpenModal(selectedProject); }}>Редактировать</a>
+                <button type="button" style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '24px', lineHeight: 1, padding: '0 4px' }} onClick={() => setSelectedProject(null)} title="Закрыть">×</button>
+              </div>
+            </div>
+            <div className="cardBody" style={{ overflowY: 'auto', flex: 1 }}>
+              <div className="tabs">
+                <div className={`tab ${activeProjectTab === 'general' ? 'active' : ''}`} onClick={() => setActiveProjectTab('general')}>Общие сведения</div>
+                <div className={`tab ${activeProjectTab === 'applications' ? 'active' : ''}`} onClick={() => setActiveProjectTab('applications')}>Заявки</div>
+                <div className={`tab ${activeProjectTab === 'contracts' ? 'active' : ''}`} onClick={() => setActiveProjectTab('contracts')}>Договора</div>
+                <div className={`tab ${activeProjectTab === 'estimates' ? 'active' : ''}`} onClick={() => setActiveProjectTab('estimates')}>Сметы</div>
+                <div className={`tab ${activeProjectTab === 'roadmap' ? 'active' : ''}`} onClick={() => setActiveProjectTab('roadmap')}>Дорожная карта</div>
+                <div className={`tab ${activeProjectTab === 'npa' ? 'active' : ''}`} onClick={() => setActiveProjectTab('npa')}>НПА</div>
+                <div className={`tab ${activeProjectTab === 'personnel' ? 'active' : ''}`} onClick={() => setActiveProjectTab('personnel')}>Кадры</div>
+              </div>
+
+              {activeProjectTab === 'general' && (
+                <div style={{ padding: '20px 0' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                    <div className="field"><label>Код</label><div style={{ padding: '8px 12px', background: 'var(--panel)', borderRadius: 8 }}>{selectedProject.code || '—'}</div></div>
+                    <div className="field"><label>Адрес</label><div style={{ padding: '8px 12px', background: 'var(--panel)', borderRadius: 8 }}>{selectedProject.address || '—'}</div></div>
+                    <div className="field"><label>Заказчик</label><div style={{ padding: '8px 12px', background: 'var(--panel)', borderRadius: 8 }}>{selectedProject.customer || '—'}</div></div>
+                    <div className="field"><label>Подрядчик</label><div style={{ padding: '8px 12px', background: 'var(--panel)', borderRadius: 8 }}>{selectedProject.contractor || '—'}</div></div>
+                    <div className="field"><label>Подразделение</label><div style={{ padding: '8px 12px', background: 'var(--panel)', borderRadius: 8 }}>{selectedProject.department?.name || departments.find(d => d.id === selectedProject.department_id)?.name || '—'}</div></div>
+                    <div className="field"><label>Вид работ</label><div style={{ padding: '8px 12px', background: 'var(--panel)', borderRadius: 8 }}>{selectedProject.work_type || '—'}</div></div>
+                    <div className="field"><label>Дата начала</label><div style={{ padding: '8px 12px', background: 'var(--panel)', borderRadius: 8 }}>{selectedProject.start_date ? new Date(selectedProject.start_date).toLocaleDateString('ru-RU') : '—'}</div></div>
+                    <div className="field"><label>Дата окончания</label><div style={{ padding: '8px 12px', background: 'var(--panel)', borderRadius: 8 }}>{selectedProject.end_date ? new Date(selectedProject.end_date).toLocaleDateString('ru-RU') : '—'}</div></div>
+                    <div className="field" style={{ gridColumn: '1 / -1' }}><label>Описание</label><div style={{ padding: '8px 12px', background: 'var(--panel)', borderRadius: 8, minHeight: 60 }}>{selectedProject.description || '—'}</div></div>
+                  </div>
+                </div>
+              )}
+
+              {activeProjectTab === 'applications' && (
+                <div style={{ padding: '20px 0' }}>
+                  {projectApplications.length === 0 ? (
+                    <div className="muted mini" style={{ padding: 20, textAlign: 'center' }}>Заявок по проекту не найдено. <a href="#applications">Перейти в раздел Заявки</a></div>
+                  ) : (
+                    <table>
+                      <thead><tr><th>Номер</th><th>Дата</th><th>Тип</th><th>Статус</th><th>Сумма</th></tr></thead>
+                      <tbody>
+                        {projectApplications.map((a: any) => (
+                          <tr key={a.id}><td>{a.number || '—'}</td><td>{a.date ? new Date(a.date).toLocaleDateString('ru-RU') : '—'}</td><td>{a.application_type || '—'}</td><td><span className={`chip ${getStatusChip(a.status || '')}`}>{a.status || '—'}</span></td><td className="tRight">{a.total_amount ? a.total_amount.toLocaleString('ru-RU') : '—'}</td></tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              )}
+
+              {activeProjectTab === 'contracts' && (
+                <div style={{ padding: '20px 0' }}>
+                  {projectContracts.length === 0 ? (
+                    <div className="muted mini" style={{ padding: 20, textAlign: 'center' }}>Договоров по проекту не найдено. <a href="#contracts">Перейти в раздел Договора</a></div>
+                  ) : (
+                    <table>
+                      <thead><tr><th>Номер</th><th>Подрядчик</th><th>Сумма</th><th>Статус</th></tr></thead>
+                      <tbody>
+                        {projectContracts.map((c: any) => (
+                          <tr key={c.id}><td>{c.contract_number || c.number || '—'}</td><td>{c.contractor_name || c.contractor || '—'}</td><td className="tRight">{c.total_amount ? Number(c.total_amount).toLocaleString('ru-RU') : '—'}</td><td>{c.status || '—'}</td></tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              )}
+
+              {activeProjectTab === 'estimates' && (
+                <div style={{ padding: '20px 0' }}>
+                  {projectEstimates.length === 0 ? (
+                    <div className="muted mini" style={{ padding: 20, textAlign: 'center' }}>Смет по проекту не найдено. <a href="#estimates">Перейти в раздел Сметы</a></div>
+                  ) : (
+                    <table>
+                      <thead><tr><th>Номер</th><th>Дата</th><th>Наименование</th><th>Сумма</th></tr></thead>
+                      <tbody>
+                        {projectEstimates.map((e: any) => (
+                          <tr key={e.id}><td>{e.number || '—'}</td><td>{e.date ? new Date(e.date).toLocaleDateString('ru-RU') : '—'}</td><td>{e.name || e.title || '—'}</td><td className="tRight">{e.total_amount || e.amount ? Number(e.total_amount || e.amount).toLocaleString('ru-RU') : '—'}</td></tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              )}
+
+              {activeProjectTab === 'roadmap' && (
+                <div style={{ padding: '20px 0' }}>
+                  <div className="muted mini" style={{ marginBottom: 12 }}>Дорожная карта документов по проекту</div>
+                  <RoadmapDiagramEmbed projectId={selectedProject.id} height="420px" />
+                </div>
+              )}
+
+              {activeProjectTab === 'npa' && (
+                <div style={{ padding: '20px 0' }}>
+                  <div className="muted mini" style={{ marginBottom: 12 }}>Нормативно-правовые акты, привязанные к проекту</div>
+                  {selectedProject.id === 13 ? (
+                    <>
+                      <table>
+                        <thead><tr><th>Наименование</th><th>Номер</th><th>Дата</th></tr></thead>
+                        <tbody>
+                          {MOCK_NPA_PROJECT_13.map((n: any) => (
+                            <tr key={n.id}><td>{n.name}</td><td>{n.number}</td><td>{n.date ? new Date(n.date).toLocaleDateString('ru-RU') : '—'}</td></tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <a className="btn small" href="#npa" style={{ marginTop: 12 }}>Перейти к справочнику НПА</a>
+                    </>
+                  ) : (
+                    <a className="btn small" href="#npa">Перейти к справочнику НПА</a>
+                  )}
+                </div>
+              )}
+
+              {activeProjectTab === 'personnel' && (
+                <div style={{ padding: '20px 0' }}>
+                  <div className="muted mini" style={{ marginBottom: 12 }}>Персонал, закреплённый за проектом</div>
+                  {selectedProject.id === 13 ? (
+                    <>
+                      <table>
+                        <thead><tr><th>ФИО</th><th>Должность</th><th>Дата прикрепления</th></tr></thead>
+                        <tbody>
+                          {MOCK_PERSONNEL_PROJECT_13.map((p: any) => (
+                            <tr key={p.id}><td>{p.full_name}</td><td>{p.position}</td><td>{p.hire_date ? new Date(p.hire_date).toLocaleDateString('ru-RU') : '—'}</td></tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <a className="btn small" href="#personnel" style={{ marginTop: 12 }}>Перейти в учёт кадров</a>
+                    </>
+                  ) : (
+                    <a className="btn small" href="#personnel">Перейти в учёт кадров</a>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, padding: '20px', overflowY: 'auto' }} onClick={handleCloseModal}>

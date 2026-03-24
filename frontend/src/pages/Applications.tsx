@@ -276,8 +276,9 @@ const Applications: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editingApp, setEditingApp] = useState<Application | null>(null);
+  const [expandedItemIdx, setExpandedItemIdx] = useState<number | null>(null);
   const [deletingApp, setDeletingApp] = useState<Application | null>(null);
-  const [activeTab, setActiveTab] = useState<'general' | 'params' | 'items' | 'meta' | 'workflow' | 'history'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'items' | 'meta' | 'workflow' | 'history'>('general');
   const [filters, setFilters] = useState({
     project_id: '',
     status: '',
@@ -558,6 +559,7 @@ const Applications: React.FC = () => {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingApp(null);
+    setExpandedItemIdx(null);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -939,6 +941,7 @@ const Applications: React.FC = () => {
                       <td className="tRight">{app.total_amount ? formatCurrencySimple(app.total_amount, 'KGS') : '—'}</td>
                       <td><span className={`chip ${getStatusChip(app.status)}`}>{app.status}</span></td>
                       <td className="tRight" onClick={(e) => e.stopPropagation()}>
+                        <a className="btn small" href="#applications" onClick={(e) => { e.preventDefault(); handleSelectApp(app); }}>Просмотр</a>
                         <a className="btn small" href="#applications" onClick={(e) => { e.preventDefault(); handleOpenModal(app); }}>Ред.</a>
                         <a className="btn small danger" href="#applications" onClick={(e) => { e.preventDefault(); setDeletingApp(app); setShowDeleteModal(true); }}>Уд.</a>
                       </td>
@@ -960,7 +963,8 @@ const Applications: React.FC = () => {
         </div>
 
         {selectedApp ? (
-          <div className="card">
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, padding: '20px', overflowY: 'auto' }} onClick={() => setSelectedApp(null)}>
+            <div className="card" style={{ maxWidth: '900px', width: '100%', margin: '20px 0', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
             <div className="cardHead">
               <div>
                 <div className="title">Карточка заявки #{selectedApp.number}</div>
@@ -969,12 +973,12 @@ const Applications: React.FC = () => {
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 {selectedApp.is_posted ? <span className="chip ok">Проведено</span> : <span className="chip warn">Не проведено</span>}
                 <span className={`chip ${getStatusChip(selectedApp.status)}`}>{selectedApp.status}</span>
+                <button type="button" style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '24px', lineHeight: 1, padding: '0 4px' }} onClick={() => setSelectedApp(null)} title="Закрыть">×</button>
               </div>
             </div>
-            <div className="cardBody">
+            <div className="cardBody" style={{ overflowY: 'auto', flex: 1 }}>
               <div className="tabs">
                 <div className={`tab ${activeTab === 'general' ? 'active' : ''}`} onClick={() => setActiveTab('general')}>Общее</div>
-                <div className={`tab ${activeTab === 'params' ? 'active' : ''}`} onClick={() => setActiveTab('params')}>Параметры</div>
                 <div className={`tab ${activeTab === 'items' ? 'active' : ''}`} onClick={() => setActiveTab('items')}>Позиции ({selectedApp.items?.length || 0})</div>
                 <div className={`tab ${activeTab === 'meta' ? 'active' : ''}`} onClick={() => setActiveTab('meta')}>Метаданные</div>
                 <div className={`tab ${activeTab === 'workflow' ? 'active' : ''}`} onClick={() => setActiveTab('workflow')}>Workflow</div>
@@ -983,70 +987,56 @@ const Applications: React.FC = () => {
 
               {activeTab === 'general' && (
                 <div style={{ padding: '16px 0' }}>
-                  <div className="actions" style={{ justifyContent: 'flex-start', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+                  <div className="actions" style={{ justifyContent: 'flex-start', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
                     <button className="btn small" type="button" onClick={() => fetchData()}>Обновить</button>
                     <button className="btn small primary" type="button" onClick={() => handleOpenModal(selectedApp)}>Записать</button>
                     <button className="btn small" type="button" onClick={() => handlePostToggle(selectedApp, !Boolean(selectedApp.is_posted))}>
                       {selectedApp.is_posted ? 'Отменить проведение' : 'Провести'}
                     </button>
-                    <button
-                      className="btn small"
-                      type="button"
-                      disabled={!selectedApp.responsible_personnel_id}
-                      onClick={async () => {
-                        const res = await axios.post(`${API_URL}/applications/${selectedApp.id}/approve`).catch(() => null);
-                        if (res?.data) setSelectedApp(res.data);
-                        fetchData();
-                      }}
-                    >
-                      Утвердить
-                    </button>
-                    <button
-                      className="btn small danger"
-                      type="button"
-                      disabled={!selectedApp.responsible_personnel_id}
-                      onClick={async () => {
-                        const res = await axios.post(`${API_URL}/applications/${selectedApp.id}/reject`).catch(() => null);
-                        if (res?.data) setSelectedApp(res.data);
-                        fetchData();
-                      }}
-                    >
-                      Отклонить
-                    </button>
-                    <button className="btn small" type="button" onClick={() => setSelectedApp(null)}>Закрыть</button>
-                    <button className="btn small" type="button" disabled>Заявки по объекту</button>
-                    <button className="btn small" type="button" disabled>Потребности организации</button>
-                    <button className="btn small" type="button" disabled>План‑факт поставок</button>
-                    <button className="btn small" type="button" disabled>Печать</button>
+                    {['submitted', 'in_process'].includes(selectedApp.status) && (
+                      <>
+                        <button
+                          className="btn small"
+                          type="button"
+                          disabled={!selectedApp.responsible_personnel_id}
+                          onClick={async () => {
+                            const res = await axios.post(`${API_URL}/applications/${selectedApp.id}/approve`).catch(() => null);
+                            if (res?.data) setSelectedApp(res.data);
+                            fetchData();
+                          }}
+                        >
+                          Утвердить
+                        </button>
+                        <button
+                          className="btn small danger"
+                          type="button"
+                          disabled={!selectedApp.responsible_personnel_id}
+                          onClick={async () => {
+                            const res = await axios.post(`${API_URL}/applications/${selectedApp.id}/reject`).catch(() => null);
+                            if (res?.data) setSelectedApp(res.data);
+                            fetchData();
+                          }}
+                        >
+                          Отклонить
+                        </button>
+                      </>
+                    )}
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                  {selectedApp.total_amount != null && selectedApp.total_amount > 0 && (
+                    <div style={{ marginBottom: 20, padding: '12px 16px', background: 'var(--bg2)', borderRadius: 8 }}>
+                      <div className="mini" style={{ color: 'var(--muted)', marginBottom: 4 }}>Общая сумма</div>
+                      <div style={{ fontSize: '22px', fontWeight: 'bold' }}>{formatCurrencySimple(selectedApp.total_amount, 'KGS')}</div>
+                      <div style={{ fontSize: '0.9em', color: 'var(--muted2)' }}>{formatCurrencySimple(selectedApp.total_amount / 89, 'USD')}</div>
+                    </div>
+                  )}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 24px', marginBottom: '16px' }}>
                     <div>
                       <div className="mini" style={{ color: 'var(--muted)' }}>Проект</div>
                       <div>{selectedApp.project?.name || `ID: ${selectedApp.project_id}`}</div>
                     </div>
                     <div>
-                      <div className="mini" style={{ color: 'var(--muted)' }}>Тип</div>
-                      <div>{selectedApp.application_type}</div>
-                    </div>
-                    <div>
-                      <div className="mini" style={{ color: 'var(--muted)' }}>Дата</div>
-                      <div>{new Date(selectedApp.date).toLocaleDateString('ru-RU')}</div>
-                    </div>
-                    <div>
-                      <div className="mini" style={{ color: 'var(--muted)' }}>Дата и время создания</div>
-                      <div>{selectedApp.created_at ? new Date(selectedApp.created_at).toLocaleString('ru-RU') : '—'}</div>
-                    </div>
-                    <div>
-                      <div className="mini" style={{ color: 'var(--muted)' }}>Результат утверждения</div>
-                      <div>
-                        {selectedApp.status === 'approved' ? 'Утверждена' : selectedApp.status === 'rejected' ? 'Отклонена' : '—'}
-                        {selectedApp.approved_by ? ` • ${selectedApp.approved_by}` : ''}
-                        {selectedApp.approval_date ? ` • ${new Date(selectedApp.approval_date).toLocaleDateString('ru-RU')}` : ''}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="mini" style={{ color: 'var(--muted)' }}>Старый номер</div>
-                      <div>{selectedApp.old_number || '—'}</div>
+                      <div className="mini" style={{ color: 'var(--muted)' }}>Тип / Дата</div>
+                      <div>{selectedApp.application_type} • {new Date(selectedApp.date).toLocaleDateString('ru-RU')}</div>
                     </div>
                     <div>
                       <div className="mini" style={{ color: 'var(--muted)' }}>Инициатор</div>
@@ -1064,6 +1054,14 @@ const Applications: React.FC = () => {
                       <div className="mini" style={{ color: 'var(--muted)' }}>Вид материала</div>
                       <div>{materialKinds.find(m => m.id === selectedApp.material_kind_id)?.name || '—'}</div>
                     </div>
+                    <div>
+                      <div className="mini" style={{ color: 'var(--muted)' }}>Вид оплаты (по умолч.)</div>
+                      <div>{paymentTypes.find(p => p.id === selectedApp.payment_type_id)?.name || '—'}</div>
+                    </div>
+                    <div>
+                      <div className="mini" style={{ color: 'var(--muted)' }}>Контрагент (по умолч.)</div>
+                      <div>{counterparties.find(c => c.id === selectedApp.counterparty_id)?.name || '—'}</div>
+                    </div>
                   </div>
                   {selectedApp.description && (
                     <div style={{ marginBottom: '16px' }}>
@@ -1072,39 +1070,11 @@ const Applications: React.FC = () => {
                     </div>
                   )}
                   {selectedApp.basis && (
-                    <div style={{ marginBottom: '16px' }}>
+                    <div>
                       <div className="mini" style={{ color: 'var(--muted)' }}>Основание</div>
                       <div>{selectedApp.basis}</div>
                     </div>
                   )}
-                  {selectedApp.total_amount && (
-                    <div>
-                      <div className="mini" style={{ color: 'var(--muted)' }}>Общая сумма</div>
-                      <div style={{ fontSize: '20px', fontWeight: 'bold' }}>
-                        <div>{formatCurrencySimple(selectedApp.total_amount, 'KGS')}</div>
-                        <div style={{ fontSize: '0.85em', color: 'var(--muted2)' }}>{formatCurrencySimple(selectedApp.total_amount ? selectedApp.total_amount / 89 : null, 'USD')}</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeTab === 'params' && (
-                <div style={{ padding: '16px 0' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                    <div>
-                      <div className="mini" style={{ color: 'var(--muted)' }}>Вид оплаты (по умолчанию)</div>
-                      <div>{paymentTypes.find(p => p.id === selectedApp.payment_type_id)?.name || '—'}</div>
-                    </div>
-                    <div>
-                      <div className="mini" style={{ color: 'var(--muted)' }}>Контрагент (по умолчанию)</div>
-                      <div>{counterparties.find(c => c.id === selectedApp.counterparty_id)?.name || '—'}</div>
-                    </div>
-                  </div>
-                  <div style={{ height: 12 }} />
-                  <div className="muted mini">
-                    Параметры задаются в форме записи заявки.
-                  </div>
                 </div>
               )}
 
@@ -1116,29 +1086,21 @@ const Applications: React.FC = () => {
                         <tr>
                           <th style={{ width: '5%' }}>№</th>
                           <th>Наименование</th>
-                          <th style={{ width: '10%' }}>Ед.</th>
-                          <th style={{ width: '12%' }} className="tRight">Количество</th>
-                          <th style={{ width: '12%' }} className="tRight">Цена</th>
+                          <th style={{ width: '8%' }}>Ед.</th>
+                          <th style={{ width: '12%' }} className="tRight">Кол-во</th>
+                          <th style={{ width: '14%' }} className="tRight">Цена</th>
                           <th style={{ width: '14%' }} className="tRight">Сумма</th>
-                          <th style={{ width: '14%' }}>Вид оплаты</th>
-                          <th>Примечание</th>
-                          <th style={{ width: '16%' }}>Контрагент</th>
-                          <th style={{ width: '16%' }}>Подрядчик</th>
                         </tr>
                       </thead>
                       <tbody>
                         {selectedApp.items.map((item, idx) => (
-                          <tr key={item.id || idx}>
+                          <tr key={item.id || idx} title={[item.notes, paymentTypes.find(p => p.id === item.payment_type_id)?.name, counterparties.find(c => c.id === item.counterparty_id)?.name].filter(Boolean).join(' • ') || undefined}>
                             <td>{item.line_number || idx + 1}</td>
-                            <td>{item.material_name}</td>
+                            <td>{item.material_name}{item.specification ? ` (${item.specification})` : ''}</td>
                             <td>{item.unit || '—'}</td>
                             <td className="tRight">{item.quantity?.toLocaleString('ru-RU') || '0'}</td>
                             <td className="tRight">{item.price ? formatCurrencySimple(item.price, 'KGS') : '—'}</td>
                             <td className="tRight">{item.amount ? formatCurrencySimple(item.amount, 'KGS') : '—'}</td>
-                            <td>{paymentTypes.find(p => p.id === item.payment_type_id)?.name || '—'}</td>
-                            <td>{item.notes || '—'}</td>
-                            <td>{counterparties.find(c => c.id === item.counterparty_id)?.name || '—'}</td>
-                            <td>{counterparties.find(c => c.id === item.contractor_id)?.name || '—'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1160,6 +1122,20 @@ const Applications: React.FC = () => {
                       <div className="mini" style={{ color: 'var(--muted)' }}>Ответственный</div>
                       <div>{personnelList.find(p => p.id === selectedApp.responsible_personnel_id)?.full_name || '—'}</div>
                     </div>
+                    <div>
+                      <div className="mini" style={{ color: 'var(--muted)' }}>Создано</div>
+                      <div>{selectedApp.created_at ? new Date(selectedApp.created_at).toLocaleString('ru-RU') : '—'}</div>
+                    </div>
+                    <div>
+                      <div className="mini" style={{ color: 'var(--muted)' }}>Старый номер</div>
+                      <div>{selectedApp.old_number || '—'}</div>
+                    </div>
+                    {(selectedApp.status === 'approved' || selectedApp.status === 'rejected') && (
+                      <div>
+                        <div className="mini" style={{ color: 'var(--muted)' }}>Утверждено / Отклонено</div>
+                        <div>{selectedApp.approved_by || '—'}{selectedApp.approval_date ? ` • ${new Date(selectedApp.approval_date).toLocaleDateString('ru-RU')}` : ''}</div>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <div className="mini" style={{ color: 'var(--muted)' }}>Комментарий</div>
@@ -1238,6 +1214,7 @@ const Applications: React.FC = () => {
                 </div>
               )}
             </div>
+            </div>
           </div>
         ) : (
           <div className="card">
@@ -1260,7 +1237,7 @@ const Applications: React.FC = () => {
             </div>
             <div className="cardBody">
               <form onSubmit={handleSubmit}>
-                <div className="title" style={{ marginBottom: 12 }}>1. Общая информация</div>
+                <div className="title" style={{ marginBottom: 12 }}>1. Основные данные</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div className="field">
                     <label>Проект *</label>
@@ -1269,14 +1246,6 @@ const Applications: React.FC = () => {
                       {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                   </div>
-                  <div className="field">
-                    <label>Организация</label>
-                    <select name="organization_id" value={formData.organization_id} onChange={handleInputChange}>
-                      <option value="">—</option>
-                      {organizations.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                    </select>
-                  </div>
-
                   <div className="field">
                     <label>Тип заявки *</label>
                     <select name="application_type" value={formData.application_type} onChange={handleInputChange} required>
@@ -1288,33 +1257,26 @@ const Applications: React.FC = () => {
                   </div>
                   <div className="field">
                     <label>Номер *</label>
-                    <input type="text" name="number" value={formData.number} onChange={handleInputChange} required />
-                  </div>
-
-                  <div className="field">
-                    <label>Старый номер</label>
-                    <input type="text" name="old_number" value={(formData as any).old_number} onChange={handleInputChange} />
+                    <input type="text" name="number" value={formData.number} onChange={handleInputChange} required placeholder="З-001/2024" />
                   </div>
                   <div className="field">
                     <label>Дата *</label>
                     <input type="date" name="date" value={formData.date} onChange={handleInputChange} required />
                   </div>
-
                   <div className="field">
-                    <label>Инициатор (поставщик/подрядчик)</label>
+                    <label>Инициатор</label>
                     <select name="initiator_counterparty_id" value={(formData as any).initiator_counterparty_id} onChange={handleInputChange}>
                       <option value="">—</option>
                       {counterparties.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                   </div>
                   <div className="field">
-                    <label>Подразделение (справочник)</label>
+                    <label>Подразделение</label>
                     <select name="department_id" value={formData.department_id} onChange={handleInputChange}>
                       <option value="">—</option>
                       {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </select>
                   </div>
-
                   <div className="field">
                     <label>Склад</label>
                     <select name="warehouse_id" value={formData.warehouse_id} onChange={handleInputChange}>
@@ -1329,18 +1291,28 @@ const Applications: React.FC = () => {
                       {materialKinds.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                     </select>
                   </div>
-
-                  <div className="field" style={{ gridColumn: '1 / -1' }}>
-                    <label>Описание</label>
-                    <textarea name="description" value={formData.description} onChange={handleInputChange} />
+                  <div className="field">
+                    <label>Вид оплаты (по умолч.)</label>
+                    <select name="payment_type_id" value={formData.payment_type_id} onChange={handleInputChange}>
+                      <option value="">—</option>
+                      {paymentTypes.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
                   </div>
-
-                  <div className="field" style={{ gridColumn: '1 / -1' }}>
-                    <label>Основание</label>
-                    <textarea name="basis" value={(formData as any).basis} onChange={handleInputChange} />
+                  <div className="field">
+                    <label>Контрагент (по умолч.)</label>
+                    <select name="counterparty_id" value={formData.counterparty_id} onChange={handleInputChange}>
+                      <option value="">—</option>
+                      {counterparties.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
                   </div>
-
-                  <div className="field" style={{ gridColumn: '1 / -1' }}>
+                  <div className="field">
+                    <label>Организация</label>
+                    <select name="organization_id" value={formData.organization_id} onChange={handleInputChange}>
+                      <option value="">—</option>
+                      {organizations.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="field">
                     <label>Статус</label>
                     <select name="status" value={formData.status} onChange={handleInputChange}>
                       <option value="draft">Черновик</option>
@@ -1352,103 +1324,98 @@ const Applications: React.FC = () => {
                     </select>
                   </div>
                 </div>
-
-                <div style={{ height: '20px' }} />
-                <div className="title" style={{ marginBottom: 12 }}>2. Параметры заявки</div>
-                <div style={{ height: '10px' }} />
-                <div className="field">
-                  <label>Вид оплаты (по умолчанию)</label>
-                  <select name="payment_type_id" value={formData.payment_type_id} onChange={handleInputChange}>
-                    <option value="">—</option>
-                    {paymentTypes.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
+                <div className="field" style={{ marginTop: 8 }}>
+                  <label>Описание</label>
+                  <textarea name="description" value={formData.description} onChange={handleInputChange} placeholder="Краткое описание заявки" rows={2} />
                 </div>
-                <div style={{ height: '10px' }} />
                 <div className="field">
-                  <label>Контрагент (по умолчанию)</label>
-                  <select name="counterparty_id" value={formData.counterparty_id} onChange={handleInputChange}>
-                    <option value="">—</option>
-                    {counterparties.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  <label>Основание</label>
+                  <textarea name="basis" value={(formData as any).basis} onChange={handleInputChange} placeholder="Обоснование / документ-основание" rows={2} />
                 </div>
 
-                <div style={{ height: '20px' }} />
-                <div className="title" style={{ marginBottom: 12 }}>3. Позиции заявки</div>
-                <div style={{ borderTop: '1px solid rgba(36,48,95,0.85)', paddingTop: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <label>Позиции заявки</label>
-                    <button type="button" className="btn small" onClick={handleAddItem}>+ Добавить позицию</button>
-                  </div>
-                  <div className="muted mini" style={{ marginBottom: 10 }}>
-                    В параметрах заявки задайте вид оплаты и контрагента по умолчанию. Массовое применение к строкам убрано.
+                <div style={{ height: 20 }} />
+                <div className="title" style={{ marginBottom: 12 }}>2. Позиции заявки</div>
+                <div style={{ borderTop: '1px solid rgba(36,48,95,0.85)', paddingTop: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <span className="muted mini">Вид оплаты и контрагент по умолчанию заданы выше</span>
+                    <button type="button" className="btn small" onClick={handleAddItem}>+ Добавить</button>
                   </div>
                   {formData.items.length > 0 && (
-                    <table style={{ fontSize: '13px' }}>
-                      <thead>
-                        <tr>
-                          <th style={{ width: '5%' }}>№</th>
-                          <th>Наименование</th>
-                          <th style={{ width: '10%' }}>Ед.</th>
-                          <th style={{ width: '12%' }}>Кол-во</th>
-                          <th style={{ width: '12%' }}>Цена</th>
-                          <th style={{ width: '12%' }}>Сумма</th>
-                          <th style={{ width: '16%' }}>Вид оплаты</th>
-                          <th style={{ width: '18%' }}>Примечание</th>
-                          <th style={{ width: '18%' }}>Контрагент</th>
-                          <th style={{ width: '18%' }}>Подрядчик</th>
-                          <th style={{ width: '5%' }}></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {formData.items.map((item, idx) => (
-                          <tr key={idx}>
-                            <td>{idx + 1}</td>
-                            <td><input type="text" style={{ width: '100%', padding: '4px 8px' }} value={item.material_name} onChange={(e) => handleItemChange(idx, 'material_name', e.target.value)} placeholder="Наименование" /></td>
-                            <td><input type="text" style={{ width: '100%', padding: '4px 8px' }} value={item.unit || ''} onChange={(e) => handleItemChange(idx, 'unit', e.target.value)} placeholder="шт" /></td>
-                            <td><input type="number" step="0.001" style={{ width: '100%', padding: '4px 8px', textAlign: 'right' }} value={item.quantity || ''} onChange={(e) => handleItemChange(idx, 'quantity', parseFloat(e.target.value) || 0)} /></td>
-                            <td><input type="number" step="0.01" style={{ width: '100%', padding: '4px 8px', textAlign: 'right' }} value={item.price || ''} onChange={(e) => handleItemChange(idx, 'price', parseFloat(e.target.value) || 0)} /></td>
-                            <td className="tRight">{item.amount ? item.amount.toLocaleString('ru-RU') : '—'}</td>
-                            <td>
-                              <select value={item.payment_type_id ?? ''} onChange={(e) => handleItemChange(idx, 'payment_type_id', e.target.value ? Number(e.target.value) : null)} style={{ width: '100%', padding: '4px 8px' }}>
-                                <option value="">—</option>
-                                {paymentTypes.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                              </select>
-                            </td>
-                            <td>
-                              <input
-                                type="text"
-                                style={{ width: '100%', padding: '4px 8px' }}
-                                value={item.notes || ''}
-                                onChange={(e) => handleItemChange(idx, 'notes', e.target.value)}
-                                placeholder="Примечание"
-                              />
-                            </td>
-                            <td>
-                              <select value={item.counterparty_id ?? ''} onChange={(e) => handleItemChange(idx, 'counterparty_id', e.target.value ? Number(e.target.value) : null)} style={{ width: '100%', padding: '4px 8px' }}>
-                                <option value="">—</option>
-                                {counterparties.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                              </select>
-                            </td>
-                            <td>
-                              <select value={item.contractor_id ?? ''} onChange={(e) => handleItemChange(idx, 'contractor_id', e.target.value ? Number(e.target.value) : null)} style={{ width: '100%', padding: '4px 8px' }}>
-                                <option value="">—</option>
-                                {counterparties.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                              </select>
-                            </td>
-                            <td><button type="button" className="btn small danger" onClick={() => handleRemoveItem(idx)}>×</button></td>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ fontSize: '13px' }}>
+                        <thead>
+                          <tr>
+                            <th style={{ width: 32 }}>№</th>
+                            <th>Наименование</th>
+                            <th style={{ width: 56 }}>Ед.</th>
+                            <th style={{ width: 80 }}>Кол-во</th>
+                            <th style={{ width: 90 }}>Цена</th>
+                            <th style={{ width: 90 }}>Сумма</th>
+                            <th style={{ width: 40 }}></th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {formData.items.map((item, idx) => (
+                            <React.Fragment key={idx}>
+                              <tr>
+                                <td>{idx + 1}</td>
+                                <td><input type="text" style={{ width: '100%', padding: '4px 8px' }} value={item.material_name} onChange={(e) => handleItemChange(idx, 'material_name', e.target.value)} placeholder="Наименование" /></td>
+                                <td><input type="text" style={{ width: '100%', padding: '4px 8px' }} value={item.unit || ''} onChange={(e) => handleItemChange(idx, 'unit', e.target.value)} placeholder="шт" /></td>
+                                <td><input type="number" step="0.001" style={{ width: '100%', padding: '4px 8px', textAlign: 'right' }} value={item.quantity || ''} onChange={(e) => handleItemChange(idx, 'quantity', parseFloat(e.target.value) || 0)} /></td>
+                                <td><input type="number" step="0.01" style={{ width: '100%', padding: '4px 8px', textAlign: 'right' }} value={item.price || ''} onChange={(e) => handleItemChange(idx, 'price', parseFloat(e.target.value) || 0)} /></td>
+                                <td className="tRight">{item.amount ? item.amount.toLocaleString('ru-RU') : '—'}</td>
+                                <td>
+                                  <button type="button" className="btn small" style={{ padding: '2px 6px' }} onClick={() => setExpandedItemIdx(expandedItemIdx === idx ? null : idx)} title="Подробнее">{expandedItemIdx === idx ? '▲' : '▼'}</button>
+                                  <button type="button" className="btn small danger" style={{ padding: '2px 6px', marginLeft: 4 }} onClick={() => handleRemoveItem(idx)}>×</button>
+                                </td>
+                              </tr>
+                              {expandedItemIdx === idx && (
+                                <tr>
+                                  <td colSpan={7} style={{ padding: '8px 12px', background: 'var(--bg2)', verticalAlign: 'top' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, alignItems: 'end' }}>
+                                      <div>
+                                        <label className="mini" style={{ color: 'var(--muted)' }}>Вид оплаты</label>
+                                        <select value={item.payment_type_id ?? ''} onChange={(e) => handleItemChange(idx, 'payment_type_id', e.target.value ? Number(e.target.value) : null)} style={{ width: '100%', padding: '6px 8px' }}>
+                                          <option value="">—</option>
+                                          {paymentTypes.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                        </select>
+                                      </div>
+                                      <div>
+                                        <label className="mini" style={{ color: 'var(--muted)' }}>Контрагент</label>
+                                        <select value={item.counterparty_id ?? ''} onChange={(e) => handleItemChange(idx, 'counterparty_id', e.target.value ? Number(e.target.value) : null)} style={{ width: '100%', padding: '6px 8px' }}>
+                                          <option value="">—</option>
+                                          {counterparties.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                        </select>
+                                      </div>
+                                      <div>
+                                        <label className="mini" style={{ color: 'var(--muted)' }}>Подрядчик</label>
+                                        <select value={item.contractor_id ?? ''} onChange={(e) => handleItemChange(idx, 'contractor_id', e.target.value ? Number(e.target.value) : null)} style={{ width: '100%', padding: '6px 8px' }}>
+                                          <option value="">—</option>
+                                          {counterparties.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                        </select>
+                                      </div>
+                                      <div>
+                                        <label className="mini" style={{ color: 'var(--muted)' }}>Примечание</label>
+                                        <input type="text" style={{ width: '100%', padding: '6px 8px' }} value={item.notes || ''} onChange={(e) => handleItemChange(idx, 'notes', e.target.value)} placeholder="Примечание" />
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
                 </div>
 
-                <div style={{ height: '20px' }} />
-                <div className="title" style={{ marginBottom: 12 }}>5. Метаданные</div>
+                <div style={{ height: 20 }} />
+                <div className="title" style={{ marginBottom: 12 }}>3. Метаданные</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div className="field" style={{ margin: 0 }}>
                     <label>Автор</label>
-                    <div style={{ padding: '10px 12px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10 }}>
+                    <div className="muted mini" style={{ padding: '10px 12px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10 }}>
                       {users.find(u => u.id === (currentUserId ?? (formData as any).author_user_id))?.full_name ||
                         users.find(u => u.id === (currentUserId ?? (formData as any).author_user_id))?.username ||
                         (currentUserId ? `ID: ${currentUserId}` : '—')}
@@ -1463,17 +1430,20 @@ const Applications: React.FC = () => {
                       ))}
                     </select>
                   </div>
-                </div>
-                <div style={{ height: '10px' }} />
-                <div className="field">
-                  <label>Комментарий</label>
-                  <textarea name="comment" value={(formData as any).comment} onChange={handleInputChange} />
+                  <div className="field" style={{ margin: 0 }}>
+                    <label>Старый номер</label>
+                    <input type="text" name="old_number" value={(formData as any).old_number} onChange={handleInputChange} placeholder="Для миграции" />
+                  </div>
+                  <div className="field" style={{ margin: 0, gridColumn: '1 / -1' }}>
+                    <label>Комментарий</label>
+                    <textarea name="comment" value={(formData as any).comment} onChange={handleInputChange} placeholder="Внутренний комментарий" rows={2} />
+                  </div>
                 </div>
 
-                <div style={{ height: '20px' }} />
+                <div style={{ height: 20 }} />
                 <div className="actions">
                   <button type="submit" className="btn primary">Сохранить</button>
-                  {editingApp && (
+                  {editingApp && !(editingApp as any).is_posted && (
                     <button type="button" className="btn" onClick={() => handlePostToggle({ ...(editingApp as any), id: editingApp.id } as Application, true)}>Провести</button>
                   )}
                   <button type="button" className="btn" onClick={handleCloseModal}>Отмена</button>

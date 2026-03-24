@@ -1,0 +1,20 @@
+.roadmapDiagramEmbed {
+  background: linear-gradient(180deg, rgba(17, 27, 59, 0.5), rgba(17, 27, 59, 0.3));
+  border: 1px solid rgba(36, 48, 95, 0.6);
+  border-radius: 12px;
+  overflow: hidden;
+  padding: 12px;
+}
+
+.roadmapDiagramEmbedCanvas {
+  width: 100%;
+  height: calc(100% - 40px);
+  min-height: 360px;
+}
+
+.roadmapDiagramEmbedLoading {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+}
