@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import API_URL from '../utils/api';
 import { handleApiError, showError } from '../utils/errorHandler';
 import { validateForm, projectValidationRules } from '../utils/validation';
 import RoadmapDiagramEmbed from '../components/RoadmapDiagramEmbed';
+import { ProjectBlocksTab } from '../components/ProjectBlocksTab';
 
 interface Project {
   id: number;
@@ -28,17 +29,6 @@ interface Department {
   id: number;
   name: string;
   code?: string;
-}
-
-interface ApiResponse<T> {
-  data: T[];
-  meta: {
-    total: number;
-    skip: number;
-    limit: number;
-    page: number;
-    total_pages: number;
-  };
 }
 
 // Мок-данные для тестирования
@@ -139,6 +129,13 @@ const MOCK_PERSONNEL_PROJECT_13 = [
   { id: 4, full_name: 'Козлов Алексей Викторович', position: 'Прораб', hire_date: '2024-06-10' },
 ];
 
+const MOCK_LAB_TESTS_PROJECT_13 = [
+  { id: 1, sample_number: 'ЛЭ-001/2024', date: '2024-07-15', test_type: 'Бетон (прочность на сжатие)', object: 'Фундамент, секция 1', result: 'Соответствует СТУ', lab_name: 'ООО «СтройЛаб»', status: 'completed' },
+  { id: 2, sample_number: 'ЛЭ-002/2024', date: '2024-08-01', test_type: 'Песок (зерновой состав)', object: 'Песчаная подушка', result: 'Соответствует ГОСТ 8736', lab_name: 'ООО «СтройЛаб»', status: 'completed' },
+  { id: 3, sample_number: 'ЛЭ-003/2024', date: '2024-09-10', test_type: 'Арматура (предел текучести)', object: 'Арматура А500С', result: 'Соответствует ГОСТ 5781', lab_name: 'ИЦ «МетроЛаб»', status: 'completed' },
+  { id: 4, sample_number: 'ЛЭ-004/2024', date: '2024-10-05', test_type: 'Бетон (морозостойкость)', object: 'Стены, марка F100', result: 'В процессе', lab_name: 'ООО «СтройЛаб»', status: 'in_progress' },
+];
+
 const Projects: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -176,7 +173,9 @@ const Projects: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [activeProjectTab, setActiveProjectTab] = useState<'general' | 'applications' | 'contracts' | 'estimates' | 'roadmap' | 'npa' | 'personnel'>('general');
+  const [activeProjectTab, setActiveProjectTab] = useState<
+    'general' | 'applications' | 'contracts' | 'estimates' | 'roadmap' | 'blocks' | 'block_clients' | 'lab_tests' | 'npa' | 'personnel'
+  >('general');
   const [projectApplications, setProjectApplications] = useState<any[]>([]);
   const [projectContracts, setProjectContracts] = useState<any[]>([]);
   const [projectEstimates, setProjectEstimates] = useState<any[]>([]);
@@ -732,6 +731,11 @@ const Projects: React.FC = () => {
                 <div className={`tab ${activeProjectTab === 'contracts' ? 'active' : ''}`} onClick={() => setActiveProjectTab('contracts')}>Договора</div>
                 <div className={`tab ${activeProjectTab === 'estimates' ? 'active' : ''}`} onClick={() => setActiveProjectTab('estimates')}>Сметы</div>
                 <div className={`tab ${activeProjectTab === 'roadmap' ? 'active' : ''}`} onClick={() => setActiveProjectTab('roadmap')}>Дорожная карта</div>
+                <div className={`tab ${activeProjectTab === 'blocks' ? 'active' : ''}`} onClick={() => setActiveProjectTab('blocks')}>Блоки</div>
+                <div className={`tab ${activeProjectTab === 'block_clients' ? 'active' : ''}`} onClick={() => setActiveProjectTab('block_clients')}>
+                  Клиенты
+                </div>
+                <div className={`tab ${activeProjectTab === 'lab_tests' ? 'active' : ''}`} onClick={() => setActiveProjectTab('lab_tests')}>Лабораторные испытания</div>
                 <div className={`tab ${activeProjectTab === 'npa' ? 'active' : ''}`} onClick={() => setActiveProjectTab('npa')}>НПА</div>
                 <div className={`tab ${activeProjectTab === 'personnel' ? 'active' : ''}`} onClick={() => setActiveProjectTab('personnel')}>Кадры</div>
               </div>
@@ -807,6 +811,60 @@ const Projects: React.FC = () => {
                 <div style={{ padding: '20px 0' }}>
                   <div className="muted mini" style={{ marginBottom: 12 }}>Дорожная карта документов по проекту</div>
                   <RoadmapDiagramEmbed projectId={selectedProject.id} height="420px" />
+                </div>
+              )}
+
+              {activeProjectTab === 'blocks' && (
+                <div style={{ padding: '20px 0' }}>
+                  <div className="muted mini" style={{ marginBottom: 12 }}>
+                    3D-модель блоков и 2D-сетка квартир; список клиентов — во вкладке «Клиенты». Демо-данные.
+                  </div>
+                  <ProjectBlocksTab projectName={selectedProject.name} variant="blocks-only" />
+                </div>
+              )}
+
+              {activeProjectTab === 'block_clients' && (
+                <div style={{ padding: '20px 0' }}>
+                  <div className="muted mini" style={{ marginBottom: 12 }}>
+                    Покупатели и бронирования по квартирам (общие демо-данные с вкладки «Блоки»).
+                  </div>
+                  <ProjectBlocksTab projectName={selectedProject.name} variant="clients-only" />
+                </div>
+              )}
+
+              {activeProjectTab === 'lab_tests' && (
+                <div style={{ padding: '20px 0' }}>
+                  <div className="muted mini" style={{ marginBottom: 12 }}>Лабораторные испытания материалов и конструкций по проекту</div>
+                  {selectedProject.id === 13 ? (
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>№ образца</th>
+                          <th>Дата</th>
+                          <th>Вид испытания</th>
+                          <th>Объект</th>
+                          <th>Результат</th>
+                          <th>Лаборатория</th>
+                          <th>Статус</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {MOCK_LAB_TESTS_PROJECT_13.map((t: any) => (
+                          <tr key={t.id}>
+                            <td>{t.sample_number}</td>
+                            <td>{t.date ? new Date(t.date).toLocaleDateString('ru-RU') : '—'}</td>
+                            <td>{t.test_type}</td>
+                            <td>{t.object}</td>
+                            <td>{t.result}</td>
+                            <td>{t.lab_name}</td>
+                            <td><span className={`chip ${t.status === 'completed' ? 'ok' : 'warn'}`}>{t.status === 'completed' ? 'Выполнено' : 'В процессе'}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="muted mini" style={{ padding: 20, textAlign: 'center' }}>Данные по лабораторным испытаниям отсутствуют</div>
+                  )}
                 </div>
               )}
 

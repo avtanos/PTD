@@ -12,6 +12,8 @@ import KS3 from './pages/KS3';
 import GPR from './pages/GPR';
 import PPR from './pages/PPR';
 import Applications from './pages/Applications';
+import ClientsRegistry from './pages/ClientsRegistry';
+import ClientCabinet from './pages/ClientCabinet';
 import Contracts from './pages/Contracts';
 import Tenders from './pages/Tenders';
 import Estimates from './pages/Estimates';
@@ -62,8 +64,10 @@ const App: React.FC = () => {
 
   useEffect(() => {
     // Поддержка как HashRouter, так и BrowserRouter
-    const hash = location.hash.slice(1);
-    const path = location.pathname.replace('/PTD', '').replace('/', '') || location.pathname.replace('/', '');
+    const hashFull = location.hash.slice(1);
+    const hash = hashFull.split('?')[0];
+    const pathRaw = location.pathname.replace('/PTD', '').replace('/', '') || location.pathname.replace('/', '');
+    const path = pathRaw.split('?')[0];
     const page = hash || path || 'dashboard';
     setCurrentPage(page);
   }, [location]);
@@ -94,6 +98,8 @@ const App: React.FC = () => {
       case 'gpr': return <GPR />;
       case 'ppr': return <PPR />;
       case 'applications': return <Applications />;
+      case 'clientsregistry': return <ClientsRegistry />;
+      case 'clientcabinet': return <ClientCabinet />;
       case 'contracts': return <Contracts />;
       case 'tenders': return <Tenders />;
       case 'estimates': return <Estimates />;
@@ -193,6 +199,12 @@ const App: React.FC = () => {
           <NavLink to="tenders" icon="M12 2 2 7l10 5 10-5-10-5Zm0 7L2 4v14l10 5 10-5V4l-10 5Z">Тендеры</NavLink>
           <NavLink to="contracts" icon="M6 2h12c1.1 0 2 .9 2 2v16c0 1.1-.9 2-2 2H6c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2Zm2 6h8V6H8v2Zm0 4h8v-2H8v2Zm0 4h6v-2H8v2Z">Договора</NavLink>
           <NavLink to="applications" icon="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2Zm-8 14H7v-2h4v2Zm6-4H7v-2h10v2Zm0-4H7V7h10v2Z">Заявки</NavLink>
+          <NavLink
+            to="clientsregistry"
+            icon="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3Zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5Zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5Z"
+          >
+            Реестр клиентов
+          </NavLink>
         </nav>
 
         <div className="navGroup">Сметы и финансы</div>
