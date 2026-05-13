@@ -39,6 +39,7 @@ jobs:
           echo "Checking if backend/frontend exists:"
           ls -la backend/frontend/ 2>&1 || echo "backend/frontend/ not found"
 
+      # URL API: секрет REACT_APP_API_URL (Settings → Secrets and variables → Actions)
       - name: Install and Build
         env:
           REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }}
