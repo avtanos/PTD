@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { Dispatch, ReactNode, SetStateAction } from 'react';
 
 /** Общий ключ с демо-блоками и квартирами (для реестра клиентов и др.) */
 export const PROJECT_BLOCKS_STORAGE_KEY = 'ptd.projectBlocks.v1';
@@ -110,22 +111,22 @@ const BLOCKS_RAW: Record<
   },
 };
 
-const SHAPES: { id: string; name: string; icon: string }[] = [
-  { id: 'rect', name: 'Прямоугольник', icon: '▬' },
-  { id: 'lshape', name: 'Г-образный', icon: '⌐' },
-  { id: 'ushape', name: 'П-образный', icon: '⊓' },
-  { id: 'tshape', name: 'Т-образный', icon: '⊤' },
-  { id: 'hshape', name: 'Н-образный', icon: 'H' },
-  { id: 'cross', name: 'Крестовой', icon: '✚' },
-  { id: 'tower', name: 'Башня', icon: '▮' },
-  { id: 'circle', name: 'Круглый', icon: '●' },
-  { id: 'hexagon', name: 'Шестиугол.', icon: '⬡' },
-  { id: 'octagon', name: 'Восьмиугол.', icon: '⯁' },
-  { id: 'diamond', name: 'Ромб', icon: '◆' },
+const SHAPES: { id: string; name: string; icon: string; desc: string }[] = [
+  { id: 'rect', name: 'Прямоугольник', icon: '▬', desc: 'Классическая форма' },
+  { id: 'lshape', name: 'Г-образный', icon: '⌐', desc: 'Угловая секция' },
+  { id: 'ushape', name: 'П-образный', icon: '⊓', desc: 'Внутренний двор' },
+  { id: 'tshape', name: 'Т-образный', icon: '⊤', desc: 'Для перекрёстков' },
+  { id: 'hshape', name: 'Н-образный', icon: 'Н', desc: 'Два внутренних двора' },
+  { id: 'cross', name: 'Крестовой', icon: '✚', desc: 'Симметричные выступы' },
+  { id: 'tower', name: 'Башня', icon: '▲', desc: 'Сужается кверху' },
+  { id: 'cylinder', name: 'Круглый', icon: '●', desc: 'Цилиндрическая форма' },
+  { id: 'hex', name: 'Шестиугольный', icon: '⬡', desc: 'Плоская крыша' },
+  { id: 'oct', name: 'Восьмиугольный', icon: '⯃', desc: 'Восьмигранник' },
+  { id: 'diamond', name: 'Ромб', icon: '◆', desc: 'Диагональный прямоугольник' },
 ];
 
 /** Формы, у которых геометрия лежит вдоль оси Y (Cylinder и т.п.) — без поворота. */
-const Y_AXIS_SHAPES = new Set(['tower', 'circle']);
+const Y_AXIS_SHAPES = new Set(['tower', 'cylinder', 'hex', 'oct']);
 
 /** Полигон формы в локальных координатах блока (X×Z), упорядочен по контуру. */
 function getShapePolygon(shape: string, w: number, d: number): Array<[number, number]> {
@@ -205,7 +206,7 @@ function getShapePolygon(shape: string, w: number, d: number): Array<[number, nu
         [-hw * arm, -hd * arm],
       ];
     }
-    case 'hexagon': {
+    case 'hex': {
       const out: Array<[number, number]> = [];
       for (let i = 0; i < 6; i++) {
         const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
@@ -213,7 +214,7 @@ function getShapePolygon(shape: string, w: number, d: number): Array<[number, nu
       }
       return out;
     }
-    case 'octagon': {
+    case 'oct': {
       const cut = 0.3;
       return [
         [-hw + hw * cut, -hd],
@@ -257,7 +258,7 @@ function pointInPolygon(poly: Array<[number, number]>, x: number, y: number): bo
 /** Внутри ли точка формы блока (Z — вторая координата плана). */
 function pointInShape(shape: string, w: number, d: number, x: number, z: number): boolean {
   if (shape === 'rect') return Math.abs(x) <= w / 2 && Math.abs(z) <= d / 2;
-  if (shape === 'tower' || shape === 'circle') {
+  if (shape === 'tower' || shape === 'cylinder') {
     const rx = w / 2;
     const ry = d / 2;
     if (rx <= 0 || ry <= 0) return false;
@@ -319,79 +320,81 @@ export interface ClientRecord {
   phone: string;
   email: string;
   passport: string;
+  /** Произвольные метки квартир из реестра (если нет привязки в «Блоках») */
+  apartmentLabels?: string[];
 }
 
-/** Тестовые мокап-данные: не использовать как реальные персональные данные */
+/** Демо-данные клиентов */
 export const CLIENTS: ClientRecord[] = [
   {
-    id: 'MOCK-CL-01',
-    fio: 'Мокап: Покупатель №1 (выдуманное ФИО)',
-    phone: '+7 (900) 555-00-01',
-    email: 'mock.client.01@example.invalid',
-    passport: 'MOCK-PASS-000001',
+    id: 'CL-0001',
+    fio: 'Асанов Бакыт М.',
+    phone: '+996 555 12-34-56',
+    email: 'asanov@mail.kg',
+    passport: 'AN1234567',
   },
   {
-    id: 'MOCK-CL-02',
-    fio: 'Мокап: Покупатель №2 (выдуманное ФИО)',
-    phone: '+7 (900) 555-00-02',
-    email: 'mock.client.02@example.invalid',
-    passport: 'MOCK-PASS-000002',
+    id: 'CL-0002',
+    fio: 'Жумабаева Айгуль Т.',
+    phone: '+996 700 98-76-54',
+    email: 'aig.zh@gmail.com',
+    passport: 'AN2345678',
   },
   {
-    id: 'MOCK-CL-03',
-    fio: 'Мокап: Покупатель №3 (выдуманное ФИО)',
-    phone: '+7 (900) 555-00-03',
-    email: 'mock.client.03@example.invalid',
-    passport: 'MOCK-PASS-000003',
+    id: 'CL-0003',
+    fio: 'Кадыров Эрлан С.',
+    phone: '+996 770 11-22-33',
+    email: 'erlan.k@inbox.ru',
+    passport: 'ID3456789',
   },
   {
-    id: 'MOCK-CL-04',
-    fio: 'Мокап: Покупатель №4 (выдуманное ФИО)',
-    phone: '+7 (900) 555-00-04',
-    email: 'mock.client.04@example.invalid',
-    passport: 'MOCK-PASS-000004',
+    id: 'CL-0004',
+    fio: 'Молдобаева Нурзат А.',
+    phone: '+996 559 44-55-66',
+    email: 'nurzat.m@bk.ru',
+    passport: 'AN4567890',
   },
   {
-    id: 'MOCK-CL-05',
-    fio: 'Мокап: Покупатель №5 (выдуманное ФИО)',
-    phone: '+7 (900) 555-00-05',
-    email: 'mock.client.05@example.invalid',
-    passport: 'MOCK-PASS-000005',
+    id: 'CL-0005',
+    fio: 'Токтоналиев Азамат К.',
+    phone: '+996 705 77-88-99',
+    email: 'azamat.t@mail.ru',
+    passport: 'ID5678901',
   },
   {
-    id: 'MOCK-CL-06',
-    fio: 'Мокап: Покупатель №6 (выдуманное ФИО)',
-    phone: '+7 (900) 555-00-06',
-    email: 'mock.client.06@example.invalid',
-    passport: 'MOCK-PASS-000006',
+    id: 'CL-0006',
+    fio: 'Сатыбалдиева Жылдыз О.',
+    phone: '+996 551 22-33-44',
+    email: 'zhyldyz.s@gmail.com',
+    passport: 'AN6789012',
   },
   {
-    id: 'MOCK-CL-07',
-    fio: 'Мокап: Покупатель №7 (выдуманное ФИО)',
-    phone: '+7 (900) 555-00-07',
-    email: 'mock.client.07@example.invalid',
-    passport: 'MOCK-PASS-000007',
+    id: 'CL-0007',
+    fio: 'Орозбаев Тилек М.',
+    phone: '+996 708 55-66-77',
+    email: 'tilek.o@yandex.ru',
+    passport: 'ID7890123',
   },
   {
-    id: 'MOCK-CL-08',
-    fio: 'Мокап: Покупатель №8 (выдуманное ФИО)',
-    phone: '+7 (900) 555-00-08',
-    email: 'mock.client.08@example.invalid',
-    passport: 'MOCK-PASS-000008',
+    id: 'CL-0008',
+    fio: 'Абдыкалыкова Мээрим Ж.',
+    phone: '+996 556 88-99-00',
+    email: 'meerim.a@mail.kg',
+    passport: 'AN8901234',
   },
   {
-    id: 'MOCK-CL-09',
-    fio: 'Мокап: Покупатель №9 (выдуманное ФИО)',
-    phone: '+7 (900) 555-00-09',
-    email: 'mock.client.09@example.invalid',
-    passport: 'MOCK-PASS-000009',
+    id: 'CL-0009',
+    fio: 'Бектуров Нурбек А.',
+    phone: '+996 702 33-44-55',
+    email: 'nurbek.b@gmail.com',
+    passport: 'ID9012345',
   },
   {
-    id: 'MOCK-CL-10',
-    fio: 'Мокап: Покупатель №10 (выдуманное ФИО)',
-    phone: '+7 (900) 555-00-10',
-    email: 'mock.client.10@example.invalid',
-    passport: 'MOCK-PASS-000010',
+    id: 'CL-0010',
+    fio: 'Эсенгулова Чолпон К.',
+    phone: '+996 777 66-77-88',
+    email: 'cholpon.e@inbox.ru',
+    passport: 'AN0123456',
   },
 ];
 
@@ -415,16 +418,17 @@ export interface Apartment {
 }
 
 const LEGACY_CLIENT_ID_MAP: Record<string, string> = {
-  'CL-0001': 'MOCK-CL-01',
-  'CL-0002': 'MOCK-CL-02',
-  'CL-0003': 'MOCK-CL-03',
-  'CL-0004': 'MOCK-CL-04',
-  'CL-0005': 'MOCK-CL-05',
-  'CL-0006': 'MOCK-CL-06',
-  'CL-0007': 'MOCK-CL-07',
-  'CL-0008': 'MOCK-CL-08',
-  'CL-0009': 'MOCK-CL-09',
-  'CL-0010': 'MOCK-CL-10',
+  // миграция старых моковых ID (если были сохранены в localStorage)
+  'MOCK-CL-01': 'CL-0001',
+  'MOCK-CL-02': 'CL-0002',
+  'MOCK-CL-03': 'CL-0003',
+  'MOCK-CL-04': 'CL-0004',
+  'MOCK-CL-05': 'CL-0005',
+  'MOCK-CL-06': 'CL-0006',
+  'MOCK-CL-07': 'CL-0007',
+  'MOCK-CL-08': 'CL-0008',
+  'MOCK-CL-09': 'CL-0009',
+  'MOCK-CL-10': 'CL-0010',
 };
 
 function migrateClientId(id: string | null | undefined): string | null {
@@ -649,7 +653,7 @@ function buildShapeGeometry(THREE: any, shape: string, w: number, h: number, d: 
     case 'tower': {
       return new THREE.CylinderGeometry((Math.min(w, d) / 2) * 0.85, (Math.min(w, d) / 2) * 0.9, h, 8);
     }
-    case 'circle': {
+    case 'cylinder': {
       const r = Math.min(w, d) / 2;
       return new THREE.CylinderGeometry(r, r, h, 36);
     }
@@ -691,7 +695,7 @@ function buildShapeGeometry(THREE: any, shape: string, w: number, h: number, d: 
       s.closePath();
       return new THREE.ExtrudeGeometry(s, { depth: h, bevelEnabled: false });
     }
-    case 'hexagon': {
+    case 'hex': {
       const s = new THREE.Shape();
       const rx = w / 2;
       const ry = d / 2;
@@ -705,7 +709,7 @@ function buildShapeGeometry(THREE: any, shape: string, w: number, h: number, d: 
       s.closePath();
       return new THREE.ExtrudeGeometry(s, { depth: h, bevelEnabled: false });
     }
-    case 'octagon': {
+    case 'oct': {
       const s = new THREE.Shape();
       const hw = w / 2;
       const hd = d / 2;
@@ -763,7 +767,7 @@ interface Scene3DProps {
   blocks: typeof BLOCKS_RAW;
   apartments: Apartment[];
   blockPositions: Record<string, [number, number]>;
-  setBlockPositions: React.Dispatch<React.SetStateAction<Record<string, [number, number]>>>;
+  setBlockPositions: Dispatch<SetStateAction<Record<string, [number, number]>>>;
   blockShapes: Record<string, string>;
   editMode: boolean;
 }
@@ -988,12 +992,12 @@ function Scene3D({
         if (shape === 'tower') {
           roofGeo = new THREE.ConeGeometry((Math.min(bd.w, bd.d) / 2) * 0.85, 2, 8);
           roofYOffset = 1;
-        } else if (shape === 'circle') {
+        } else if (shape === 'cylinder') {
           roofGeo = new THREE.ConeGeometry(Math.min(bd.w, bd.d) / 2, 2, 36);
           roofYOffset = 1;
-        } else if (shape === 'hexagon') {
+        } else if (shape === 'hex') {
           roofGeo = new THREE.CylinderGeometry(Math.min(bd.w, bd.d) / 2 + 0.2, Math.min(bd.w, bd.d) / 2 + 0.2, 0.2, 6);
-        } else if (shape === 'octagon') {
+        } else if (shape === 'oct') {
           roofGeo = new THREE.CylinderGeometry(Math.min(bd.w, bd.d) / 2 + 0.2, Math.min(bd.w, bd.d) / 2 + 0.2, 0.2, 8);
         } else {
           roofGeo = new THREE.BoxGeometry(bd.w + 0.6, 0.2, bd.d + 0.6);
@@ -1221,7 +1225,7 @@ function Scene3D({
   );
 }
 
-function Stat({ l, v }: { l: string; v: React.ReactNode }) {
+function Stat({ l, v }: { l: string; v: ReactNode }) {
   return (
     <div
       style={{
@@ -1808,6 +1812,14 @@ export function ProjectBlocksTab({ projectName, variant = 'full' }: ProjectBlock
   const [selected, setSelected] = useState<Apartment | null>(null);
   const clone = (v: any) => JSON.parse(JSON.stringify(v));
 
+  const migrateShapeId = useCallback((shape: unknown): string => {
+    const s = String(shape ?? '');
+    if (s === 'circle') return 'cylinder';
+    if (s === 'hexagon') return 'hex';
+    if (s === 'octagon') return 'oct';
+    return s || 'rect';
+  }, []);
+
   const [blocks, setBlocks] = useState<typeof BLOCKS_RAW>(() => {
     try {
       const raw = localStorage.getItem(PROJECT_BLOCKS_STORAGE_KEY);
@@ -1857,7 +1869,13 @@ export function ProjectBlocksTab({ projectName, variant = 'full' }: ProjectBlock
       const raw = localStorage.getItem(PROJECT_BLOCKS_STORAGE_KEY);
       if (!raw) return { 'Блок 1': 'rect', 'Блок 2': 'rect', 'Блок 3': 'rect' };
       const parsed = JSON.parse(raw);
-      if (parsed?.blockShapes) return parsed.blockShapes;
+      if (parsed?.blockShapes && typeof parsed.blockShapes === 'object') {
+        const out: Record<string, string> = {};
+        Object.entries(parsed.blockShapes as Record<string, unknown>).forEach(([k, v]) => {
+          out[k] = migrateShapeId(v);
+        });
+        return out;
+      }
       return { 'Блок 1': 'rect', 'Блок 2': 'rect', 'Блок 3': 'rect' };
     } catch {
       return { 'Блок 1': 'rect', 'Блок 2': 'rect', 'Блок 3': 'rect' };
@@ -2031,7 +2049,7 @@ export function ProjectBlocksTab({ projectName, variant = 'full' }: ProjectBlock
     // positions/shapes for new or renamed block
     if (blockEditorTarget === '__new__') {
       setBlockPositions((prev) => ({ ...prev, [finalName]: [0, 0] }));
-      setBlockShapes((prev) => ({ ...prev, [finalName]: blockDraftShape || 'rect' }));
+      setBlockShapes((prev) => ({ ...prev, [finalName]: migrateShapeId(blockDraftShape || 'rect') }));
     } else if (prevName && prevName !== finalName) {
       setBlockPositions((prev) => {
         const next = { ...prev } as any;
@@ -2041,12 +2059,12 @@ export function ProjectBlocksTab({ projectName, variant = 'full' }: ProjectBlock
       });
       setBlockShapes((prev) => {
         const next = { ...prev } as any;
-        next[finalName] = blockDraftShape || next[prevName] || 'rect';
+        next[finalName] = migrateShapeId(blockDraftShape || next[prevName] || 'rect');
         delete next[prevName];
         return next;
       });
     } else {
-      setBlockShapes((prev) => ({ ...prev, [finalName]: blockDraftShape || prev[finalName] || 'rect' }));
+      setBlockShapes((prev) => ({ ...prev, [finalName]: migrateShapeId(blockDraftShape || prev[finalName] || 'rect') }));
     }
 
     setApartments((prev) =>
